@@ -1,0 +1,13 @@
+# Grass Patch Materials
+newmtl Mat_GrassPatch_Light
+Kd 0.27 0.55 0.07
+Ka 0.1 0.1 0.1
+Ks 0.1 0.1 0.1
+d 1.0
+
+newmtl Mat_GrassPatch_Deep
+Kd 0.07 0.44 0.08
+Ka 0.1 0.1 0.1
+Ks 0.1 0.1 0.1
+d 1.0
+

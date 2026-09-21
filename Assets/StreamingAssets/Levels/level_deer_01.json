@@ -1,0 +1,49 @@
+{
+  "levelId": "level_deer_01",
+  "speciesId": "deer",
+  "realCoordinateName": "Kotka Wildlife Sanctuary, Sundarbans",
+  "latitude": 21.87,
+  "longitude": 89.75,
+  "dataSource": "MOD13Q1 250m NDVI Composite & Bangladesh Forest Dept Field Survey",
+  "factTextBn": "হরিণ নিরাপদে মিষ্টি পানির উৎসে পৌঁছেছে। কিন্তু সুন্দরবনের মিঠাপানির উৎস দ্রুত সংকুচিত হচ্ছে — পলি জমা ও লবণাক্ততা বৃদ্ধির কারণে মিষ্টি পানির পুকুরগুলো নষ্ট হয়ে যাচ্ছে।",
+  "startZone": { "centerX": 85, "centerZ": 48, "radius": 4 },
+  "goalZone": { "centerX": -40, "centerZ": 155, "radius": 16 },
+  "hazardZones": [
+    {
+      "zoneId": "crocodile_crossing_01",
+      "centerX": 38,
+      "centerZ": 48,
+      "radius": 22,
+      "riskTier": "high",
+      "rawDataValue": 40.0,
+      "rawDataUnit": "লবণাক্ত মোহনা কুমির এলাকা (Croc Crossing)"
+    },
+    {
+      "zoneId": "poacher_mudflat_01",
+      "centerX": -8,
+      "centerZ": 50,
+      "radius": 26,
+      "riskTier": "high",
+      "rawDataValue": 0.18,
+      "rawDataUnit": "চোরাশিকারি ফাঁদ অঞ্চল (Poacher Traps)"
+    },
+    {
+      "zoneId": "deforestation_clearing_01",
+      "centerX": -60,
+      "centerZ": 75,
+      "radius": 32,
+      "riskTier": "high",
+      "rawDataValue": 0.12,
+      "rawDataUnit": "বৃক্ষনিধন মরুভূমি অঞ্চল (Deforested Clearing)"
+    },
+    {
+      "zoneId": "hypersaline_mudflat_02",
+      "centerX": -14,
+      "centerZ": 125,
+      "radius": 28,
+      "riskTier": "medium",
+      "rawDataValue": 28.5,
+      "rawDataUnit": "PSU Salinity (উচ্চ লবণাক্ত কাদা)"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "levelId": "level_dolphin_01",
+  "speciesId": "gangetic_dolphin",
+  "realCoordinateName": "Passur River Estuary to Bay of Bengal",
+  "latitude": 21.82,
+  "longitude": 89.60,
+  "dataSource": "NASA PO.DAAC SMAP Salinity & BFRI Estuary Survey",
+  "factTextBn": "ডলফিন উন্মুক্ত সাগরে পৌঁছেছে। তবে মেঘনা মোহনায় অতিরিক্ত পলি ও দূষণের কারণে শুশুক ও ইরাবতী ডলফিনের প্রাকৃতিক আবাস দ্রুত নষ্ট হচ্ছে।",
+  "startZone": { "centerX": 42, "centerZ": 145, "radius": 4 },
+  "goalZone": { "centerX": 42, "centerZ": -65, "radius": 16 },
+  "hazardZones": [
+    {
+      "zoneId": "motorized_trawler_01",
+      "centerX": 42,
+      "centerZ": 85,
+      "radius": 12,
+      "riskTier": "high",
+      "rawDataValue": 88.0,
+      "rawDataUnit": "dB ট্রলার মোটরের তীব্র শব্দদূষণ"
+    },
+    {
+      "zoneId": "crocodile_territory_01",
+      "centerX": 38,
+      "centerZ": 48,
+      "radius": 10,
+      "riskTier": "high",
+      "rawDataValue": 40.0,
+      "rawDataUnit": "মোহনা কুমির এলাকা"
+    },
+    {
+      "zoneId": "shallow_mudbank_01",
+      "centerX": 42,
+      "centerZ": 0,
+      "radius": 14,
+      "riskTier": "medium",
+      "rawDataValue": 1.2,
+      "rawDataUnit": "m গভীরতাহীন পলিযুক্ত অগভীর চ্যানেল"
+    }
+  ]
+}

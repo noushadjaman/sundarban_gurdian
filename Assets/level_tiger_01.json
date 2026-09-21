@@ -1,0 +1,31 @@
+{
+  "levelId": "level_tiger_01",
+  "speciesId": "tiger",
+  "realCoordinateName": "Katka Range, Sundarbans East",
+  "latitude": 21.87,
+  "longitude": 89.75,
+  "dataSource": "MOD13Q1.061 250m 16-day NDVI, 2025-12-03",
+  "factTextBn": "কাটকা রেঞ্জে গত এক দশকে গাছপালার ঘনত্ব (NDVI) উল্লেখযোগ্যভাবে কমেছে, যা বাঘের চলাচলের এলাকা সংকুচিত করছে।",
+  "startZone": { "centerX": -15, "centerZ": 5, "radius": 3 },
+  "goalZone": { "centerX": 18, "centerZ": 40, "radius": 3 },
+  "hazardZones": [
+    {
+      "zoneId": "ndvi_low_01",
+      "centerX": -2,
+      "centerZ": 15,
+      "radius": 5,
+      "riskTier": "low",
+      "rawDataValue": 0.8193,
+      "rawDataUnit": "NDVI index"
+    },
+    {
+      "zoneId": "ndvi_low_02",
+      "centerX": 6,
+      "centerZ": 28,
+      "radius": 6,
+      "riskTier": "low",
+      "rawDataValue": 0.8193,
+      "rawDataUnit": "NDVI index"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+newmtl Mat_Fall_Bark
+Kd 0.25 0.14 0.08
+
+newmtl Mat_Fall_Leaves1
+Kd 0.82 0.38 0.08
+
+newmtl Mat_Fall_Leaves2
+Kd 0.95 0.48 0.05
+

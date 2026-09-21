@@ -1,0 +1,4 @@
+newmtl Realistic_Tiger_Mat
+Kd 1.0 1.0 1.0
+map_Kd ../../textures/gltf_embedded_0.png
+bump ../../textures/gltf_embedded_2.png

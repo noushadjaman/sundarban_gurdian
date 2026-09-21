@@ -1,0 +1,67 @@
+{
+  "levelId": "level_hilsha_bongoposagor_to_meghna",
+  "dataSource": "Ministry of Fisheries and Livestock, Bangladesh — Mother Hilsa Conservation Campaign & Jatka Conservation Program",
+  "factTextBn": "বাংলাদেশ সরকার প্রতি বছর অক্টোবরে ২২ দিনের 'মা ইলিশ সংরক্ষণ অভিযান' পরিচালনা করে, যখন ইলিশ ধরা, বিক্রি ও পরিবহন সম্পূর্ণ নিষিদ্ধ থাকে যাতে মা ইলিশ নিরাপদে ডিম পাড়তে পারে। এছাড়া প্রতি বছর ১ নভেম্বর থেকে ৩০ জুন পর্যন্ত ছোট জাটকা মাছ ধরাও নিষিদ্ধ। আইন ভঙ্গ করলে ২ বছর পর্যন্ত কারাদণ্ড ও ৫ লক্ষ টাকা জরিমানা হতে পারে। ২০২৪ সালের তথ্য অনুযায়ী এই উদ্যোগে ৫২% মা ইলিশ নিরাপদে ডিম পাড়তে পেরেছিল — কিন্তু আইন থাকা সত্ত্বেও কিছু অসাধু জেলে এখনো অবৈধভাবে মাছ ধরে, যার কারণে তোমার মতো ইলিশকে এখনো সতর্ক থাকতে হয়।",
+  "corridor": [
+    {
+      "distanceFromMouthKm": 0,
+      "location": "Bay of Bengal Mouth (Hatiya offshore)",
+      "minSafeSalinityPSU": 0,
+      "maxSafeSalinityPSU": 25,
+      "actualSalinityPSU": 28.2,
+      "salinityDataSource": "NASA PO.DAAC SMAP L3 SSS (CAP v5.0, Dec 2025)",
+      "actualTemperatureC": 23.50,
+      "temperatureDataSource": "NASA MODIS MOD11A2.061 LST"
+    },
+    {
+      "distanceFromMouthKm": 20,
+      "location": "Lower Meghna (Bhola / Monpura)",
+      "minSafeSalinityPSU": 0,
+      "maxSafeSalinityPSU": 20,
+      "actualSalinityPSU": 12.5,
+      "salinityDataSource": "BFRI Coastal Estuary Monitoring Report",
+      "actualTemperatureC": 22.71,
+      "temperatureDataSource": "NASA MODIS MOD11A2.061 LST (2025-12-19)"
+    },
+    {
+      "distanceFromMouthKm": 45,
+      "location": "Mid Meghna (Barisal / Mehendiganj)",
+      "minSafeSalinityPSU": 0,
+      "maxSafeSalinityPSU": 12,
+      "actualSalinityPSU": 4.8,
+      "salinityDataSource": "BFRI Hilsa Sanctuary Monitoring Study",
+      "actualTemperatureC": 21.17,
+      "temperatureDataSource": "NASA MODIS MOD11A2.061 LST (2025-12-19)"
+    },
+    {
+      "distanceFromMouthKm": 70,
+      "location": "Meghna-Padma Confluence (Chandpur)",
+      "minSafeSalinityPSU": 0,
+      "maxSafeSalinityPSU": 6,
+      "actualSalinityPSU": 1.4,
+      "salinityDataSource": "BFRI Riverine Station Chandpur Annual Survey",
+      "actualTemperatureC": 21.53,
+      "temperatureDataSource": "NASA MODIS MOD11A2.061 LST (2025-12-19)"
+    },
+    {
+      "distanceFromMouthKm": 100,
+      "location": "Padma Upstream (Mawa / Munshiganj)",
+      "minSafeSalinityPSU": 0,
+      "maxSafeSalinityPSU": 2,
+      "actualSalinityPSU": 0.3,
+      "salinityDataSource": "BWDB Riverine Salinity Survey",
+      "actualTemperatureC": 19.91,
+      "temperatureDataSource": "NASA MODIS MOD11A2.061 LST (2025-12-19)"
+    },
+    {
+      "distanceFromMouthKm": 130,
+      "location": "Padma-Jamuna Confluence (Goalondo)",
+      "minSafeSalinityPSU": 0,
+      "maxSafeSalinityPSU": 1,
+      "actualSalinityPSU": 0.1,
+      "salinityDataSource": "BWDB Hydrological Monitoring Network",
+      "actualTemperatureC": 19.79,
+      "temperatureDataSource": "NASA MODIS MOD11A2.061 LST (2025-12-19)"
+    }
+  ]
+}

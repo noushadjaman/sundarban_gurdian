@@ -1,0 +1,40 @@
+{
+  "levelId": "level_tiger_01",
+  "speciesId": "tiger",
+  "realCoordinateName": "Kotka Range, Sundarbans Tiger Reserve",
+  "latitude": 21.87,
+  "longitude": 89.75,
+  "dataSource": "NASA MODIS MOD13Q1 NDVI & Bangladesh Wildlife Trust Census",
+  "factTextBn": "বাঘ শিকার সম্পন্ন করে বেঁচে আছে। কিন্তু আবাসস্থল ধ্বংস ও শিকারের অভাবে বাঘ প্রায়ই খাবারের খোঁজে লোকালয়ে চলে আসে — যা মানব-বাঘ সংঘাতের সৃষ্টি করে।",
+  "startZone": { "centerX": -120, "centerZ": 30, "radius": 5 },
+  "goalZone": { "centerX": -40, "centerZ": 155, "radius": 16 },
+  "hazardZones": [
+    {
+      "zoneId": "deforested_wasteland_01",
+      "centerX": -65,
+      "centerZ": 75,
+      "radius": 30,
+      "riskTier": "high",
+      "rawDataValue": 0.11,
+      "rawDataUnit": "NDVI বন উজাড় — কোনো শিকার নেই"
+    },
+    {
+      "zoneId": "poacher_trap_zone_01",
+      "centerX": -52,
+      "centerZ": 45,
+      "radius": 22,
+      "riskTier": "high",
+      "rawDataValue": 0.18,
+      "rawDataUnit": "চোরাশিকারি তারের ফাঁদ অঞ্চল"
+    },
+    {
+      "zoneId": "hypersaline_flat_01",
+      "centerX": -48,
+      "centerZ": 130,
+      "radius": 24,
+      "riskTier": "medium",
+      "rawDataValue": 28.5,
+      "rawDataUnit": "PSU স্যালাইন কাদা"
+    }
+  ]
+}
