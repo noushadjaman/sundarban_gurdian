@@ -14,8 +14,8 @@ namespace SundarbanGuardian.Inventory
     public class Backpack : MonoBehaviour
     {
         [Header("Starting Tool Inventory")]
-        [Tooltip("Initial count of each tool at level start (default 3)")]
-        public int startingCountPerTool = 3;
+        [Tooltip("Initial count of each tool at level start (0 = must collect from world)")]
+        public int startingCountPerTool = 0;
 
         [Header("Interaction Settings")]
         public float interactionRadius = 5.0f;
@@ -31,10 +31,15 @@ namespace SundarbanGuardian.Inventory
         // Nearby clearable obstacle
         public UsableObstacle nearbyObstacle { get; private set; }
 
+        [Header("Food & Sustenance")]
+        public int foodCount = 1; // Starts with 1 emergency food ration
+        private float nextAutoEatTime = 0f;
+
         public event Action<ToolType, int> ToolCountChanged;
         public event Action<ToolType> ActiveToolChanged;
         public event Action<UsableObstacle> NearbyObstacleChanged;
         public event Action<UsableObstacle, ToolType> ObstacleRestored;
+        public event Action<int> FoodCountChanged;
 
         private SpeciesHealth speciesHealth;
 
@@ -46,8 +51,7 @@ namespace SundarbanGuardian.Inventory
             isInitialized = true;
             for (int i = 0; i < 4; i++)
             {
-                if (toolCounts[i] == 0)
-                    toolCounts[i] = startingCountPerTool;
+                toolCounts[i] = startingCountPerTool; // 0 tools by default - must explore to find!
             }
             if (speciesHealth == null)
             {
@@ -76,6 +80,7 @@ namespace SundarbanGuardian.Inventory
                 ToolCountChanged?.Invoke((ToolType)i, toolCounts[i]);
             }
             ActiveToolChanged?.Invoke(activeTool);
+            FoodCountChanged?.Invoke(foodCount);
         }
 
         private void Update()
@@ -86,7 +91,131 @@ namespace SundarbanGuardian.Inventory
                 LocalPlayerBackpack = this;
             }
 
+            // Keyboard shortcuts (New Input System with safe legacy fallback)
+            bool dropPressed = false;
+            bool eatPressed = false;
+#if ENABLE_INPUT_SYSTEM
+            try
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb != null)
+                {
+                    if (kb.gKey.wasPressedThisFrame || kb.qKey.wasPressedThisFrame) dropPressed = true;
+                    if (kb.eKey.wasPressedThisFrame || kb.hKey.wasPressedThisFrame) eatPressed = true;
+                }
+            }
+            catch (System.Exception) { }
+#else
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.G) || Input.GetKeyDown(KeyCode.Q)) dropPressed = true;
+                if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.H)) eatPressed = true;
+            }
+            catch (System.Exception) { }
+#endif
+
+            if (dropPressed)
+            {
+                DropActiveTool();
+            }
+
+            if (eatPressed)
+            {
+                TryEatFood();
+            }
+
+            // Auto-eat emergency nutrition if character HP is dangerously low (< 25% of max)
+            if (speciesHealth != null && speciesHealth.currentHealth < (speciesHealth.maxHealth * 0.25f) && foodCount > 0)
+            {
+                if (Time.time >= nextAutoEatTime)
+                {
+                    nextAutoEatTime = Time.time + 3.0f; // 3 sec cooldown between auto-eating
+                    TryEatFood();
+                    Debug.Log("[Backpack] Character HP low — automatically ate food to regain HP!");
+                }
+            }
+
             UpdateNearbyObstacle();
+        }
+
+        public void AddFood(int amount = 1)
+        {
+            if (amount <= 0) return;
+            foodCount += amount;
+            FoodCountChanged?.Invoke(foodCount);
+            Debug.Log($"[Backpack] Added {amount}x Food (Total: {foodCount})");
+        }
+
+        public bool TryEatFood()
+        {
+            if (foodCount <= 0)
+            {
+                Debug.LogWarning("[Backpack] No food in inventory!");
+                return false;
+            }
+
+            if (speciesHealth == null)
+            {
+                speciesHealth = GetComponent<SpeciesHealth>();
+            }
+
+            if (speciesHealth == null) return false;
+
+            foodCount--;
+            speciesHealth.EatFood(25f);
+            FoodCountChanged?.Invoke(foodCount);
+            HudEvents.RaiseEnvironmentalRestoration($"🍗 +25 HP — Ate Food Ration! Restored Health: {speciesHealth.currentHealth:F0}/{speciesHealth.maxHealth:F0}");
+            Debug.Log($"[Backpack] Ate food! Remaining food: {foodCount}, Current HP: {speciesHealth.currentHealth}");
+            return true;
+        }
+
+        /// <summary>
+        /// Drops 1 instance of the specified tool into the 3D world in front of player.
+        /// Spawns a ToolPickupItem with 3D miniature visual asset and minimap radar icon.
+        /// </summary>
+        public bool DropTool(ToolType tool, int amount = 1)
+        {
+            if (amount <= 0) return false;
+            int idx = (int)tool;
+            if (idx < 0 || idx >= toolCounts.Length || toolCounts[idx] < amount)
+            {
+                Debug.LogWarning($"[Backpack] Cannot drop {tool}: not enough items in inventory!");
+                return false;
+            }
+
+            // Consume from inventory
+            toolCounts[idx] -= amount;
+            ToolCountChanged?.Invoke(tool, toolCounts[idx]);
+
+            // Calculate drop position in front of player
+            Vector3 dropPos = transform.position + transform.forward * 2.2f + Vector3.up * 0.4f;
+
+            // Snap to ground/water surface if possible
+            if (Physics.Raycast(dropPos + Vector3.up * 3.0f, Vector3.down, out RaycastHit hit, 15f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                dropPos.y = Mathf.Max(hit.point.y + 0.35f, 0.25f);
+            }
+
+            // Create dropped tool GameObject with 3D visual asset
+            GameObject dropGo = new GameObject($"Dropped_{tool}");
+            dropGo.transform.position = dropPos;
+            var pickup = dropGo.AddComponent<ToolPickupItem>();
+            pickup.toolType = tool;
+            pickup.amount = amount;
+            pickup.SetDropCooldown(2.5f);
+            pickup.Ensure3DVisualAsset();
+            pickup.EnsureTriggerCollider();
+
+            string tName = ToolInfo.GetNameEn(tool);
+            HudEvents.RaiseEnvironmentalRestoration($"Dropped {tName} at location");
+            Debug.Log($"[Backpack] Dropped {amount}x {tool} at {dropPos}");
+
+            return true;
+        }
+
+        public bool DropActiveTool()
+        {
+            return DropTool(activeTool, 1);
         }
 
         public void UpdateNearbyObstacle()
@@ -207,7 +336,7 @@ namespace SundarbanGuardian.Inventory
                 }
 
                 // Raise restoration feedback event
-                string rewardMsg = $"+10 HP — পরিবেশ পুনরুদ্ধার! ({ToolInfo.GetNameBn(required)})";
+                string rewardMsg = $"+10 HP — Habitat Restored! ({ToolInfo.GetNameEn(required)})";
                 HudEvents.RaiseEnvironmentalRestoration(rewardMsg);
                 ObstacleRestored?.Invoke(nearbyObstacle, required);
                 Debug.Log($"[Backpack] Successfully cleared {nearbyObstacle.name}! {rewardMsg}");

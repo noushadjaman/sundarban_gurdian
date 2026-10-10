@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Mangrove_Asset_Water
+  m_Shader: {fileID: 4800000, guid: cfab0063a2201f74cb20b123f74d2e72, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 3000
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BumpMap:
+        m_Texture: {fileID: 2800000, guid: a0e332e77dec9704ca9702bf9f48be6d, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BumpScale: 0.35
+    - _FoamDistance: 0.5
+    - _NormalTiling: 5
+    - _SeaTransitionZEnd: -40
+    - _SeaTransitionZStart: 110
+    - _Smoothness: 0.95
+    m_Colors:
+    - _DeepColor: {r: 0.22, g: 0.38, b: 0.4, a: 0.4}
+    - _FoamColor: {r: 0.8, g: 0.86, b: 0.82, a: 0.8}
+    - _OceanBlueColor: {r: 0.15, g: 0.4, b: 0.55, a: 0.48}
+    - _OceanShallowBlueColor: {r: 0.28, g: 0.5, b: 0.6, a: 0.25}
+    - _ShallowColor: {r: 0.35, g: 0.48, b: 0.45, a: 0.2}
+    - _SkyReflectionColor: {r: 0.82, g: 0.9, b: 0.96, a: 1}
+    - _WaveSpeed: {r: 0.015, g: 0.025, b: -0.01, a: 0.018}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

@@ -10,6 +10,8 @@ namespace SundarbanGuardian.Core
         public static event Action ExitedHazardZone;
         public static event Action<string> EnvironmentalRestoration;
 
+        public static event Action<float, float> HazardZoneCleared;
+
         public static void RaiseEnteredHazardZone(string riskTier, float rawValue, string unit)
             => EnteredHazardZone?.Invoke(riskTier, rawValue, unit);
 
@@ -18,5 +20,8 @@ namespace SundarbanGuardian.Core
 
         public static void RaiseEnvironmentalRestoration(string message)
             => EnvironmentalRestoration?.Invoke(message);
+
+        public static void RaiseHazardZoneCleared(float x, float z)
+            => HazardZoneCleared?.Invoke(x, z);
     }
 }

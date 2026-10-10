@@ -6,38 +6,50 @@ using SundarbanGuardian.Core;
 
 namespace SundarbanGuardian.Player
 {
-    /// This is the differentiator mechanic. The Hilsha doesn't avoid circular
-    /// "hazard zones" like the land animals — instead it swims along a fixed
-    /// upstream path (Bongoposagor -> Meghna -> Padma), and at every point
-    /// along that path there is a REAL salinity + temperature reading. If the
-    /// player strays outside the fish's biologically safe range for THAT
-    /// point, it takes damage and gets pushed back downstream slightly —
-    /// modeling why real Hilsha migration is genuinely constrained by these
-    /// two variables.
+    /// <summary>
+    /// Mother Hilsha Spawning Migration Controller:
+    /// Swims upstream against the river current from the deep Bay of Bengal (Bongoposagor)
+    /// through the Meghna river to the freshwater spawning grounds.
+    /// Features responsive steering through river channels, dodging illegal gillnets & box nets,
+    /// sprinting against river currents (Shift key), and real NASA/BFRI salinity tolerance monitoring.
+    /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(Animator))]
     public class HilshaMigrationController : MonoBehaviour
     {
         [Header("Movement")]
-        public float swimSpeed = 6f;
-        public float lateralSpeed = 4f;   // side-to-side movement within the corridor width
-        public float corridorWidth = 6f;  // visual width the player can move laterally, regardless of data
+        public float swimSpeed = 9.5f;          // Upstream migration cruising speed
+        public float turnSpeedDeg = 340f;       // Responsive steering to dodge nets
+        public float sprintMultiplier = 1.7f;   // Shift = adrenaline burst against the river current
+        public float cruiseY = -0.50f;          // Submerged swim depth
+        public float diveY = -1.45f;            // Deep dive to slip under floating net lines
+        public float corridorWidth = 12f;       // Backwards compatibility for builders
+        public float lateralSpeed = 7f;         // Backwards compatibility for builders
 
-        [Header("Level data")]
+        [Header("River Geography")]
+        public float riverStartZ = -275f;       // Bay of Bengal mouth
+        public float riverGoalZ = -125f;        // Freshwater spawning grounds
+        public float minX = -200f;
+        public float maxX = 90f;
+        public float minZ = -285f;
+        public float maxZ = -80f;
+
+        [Header("Level Data & Salinity Tracking")]
         public string levelFileName = "level_hilsha_bongoposagor_to_meghna";
         private HilshaLevelData levelData;
         private int currentSegmentIndex;
         private float distanceTravelledKm;
 
         [Header("Tuning")]
-        public float kmPerSecondAtFullSpeed = 0.4f; // how fast "swimSpeed" input translates to km progress
-        public float outOfRangeDamagePerSec = 15f;
+        public float outOfRangeDamagePerSec = 18f;
 
         private Rigidbody rb;
         private Animator animator;
         private SpeciesHealth health;
+        private float startWorldZ;
+
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
-        private static readonly int StressedHash = Animator.StringToHash("Stressed"); // fin-flare/distress anim when out of range
+        private static readonly int StressedHash = Animator.StringToHash("Stressed");
 
         public float ProgressKm => distanceTravelledKm;
         public MigrationCorridorPoint CurrentPoint { get; private set; }
@@ -48,11 +60,17 @@ namespace SundarbanGuardian.Player
             rb.useGravity = false;
             animator = GetComponent<Animator>();
             health = GetComponent<SpeciesHealth>();
+
+            if (GetComponent<ToolActionController>() == null)
+            {
+                gameObject.AddComponent<ToolActionController>();
+            }
         }
 
         private void Start()
         {
             LoadLevel();
+            startWorldZ = transform.position.z;
         }
 
         private void LoadLevel()
@@ -67,8 +85,26 @@ namespace SundarbanGuardian.Player
             string json = File.ReadAllText(path);
             levelData = JsonUtility.FromJson<HilshaLevelData>(json);
             currentSegmentIndex = 0;
-            distanceTravelledKm = levelData.corridor.Count > 0 ? levelData.corridor[0].distanceFromMouthKm : 0f;
-            CurrentPoint = levelData.corridor.Count > 0 ? levelData.corridor[0] : null;
+            distanceTravelledKm = (levelData != null && levelData.corridor != null && levelData.corridor.Count > 0)
+                ? levelData.corridor[0].distanceFromMouthKm : 0f;
+            CurrentPoint = (levelData != null && levelData.corridor != null && levelData.corridor.Count > 0)
+                ? levelData.corridor[0] : null;
+        }
+
+        public void ResetMigration()
+        {
+            if (levelData == null) LoadLevel();
+            currentSegmentIndex = 0;
+            distanceTravelledKm = 0f;
+            CurrentPoint = (levelData != null && levelData.corridor != null && levelData.corridor.Count > 0)
+                ? levelData.corridor[0] : null;
+
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+            startWorldZ = riverStartZ;
         }
 
         private void FixedUpdate()
@@ -76,31 +112,90 @@ namespace SundarbanGuardian.Player
             if (levelData == null || levelData.corridor == null || levelData.corridor.Count == 0) return;
 
             Vector2 moveInput = MobileInputManager.GetMoveInput();
-            float forwardInput = Mathf.Max(0f, moveInput.y); // fish only swims upstream, not backward
-            float lateralInput = moveInput.x;
+            Camera cam = Camera.main;
+            Vector3 moveDir;
 
-            // Progress upstream (this is what the "km from mouth" number represents)
-            distanceTravelledKm += forwardInput * swimSpeed * kmPerSecondAtFullSpeed * Time.fixedDeltaTime;
+            if (cam != null)
+            {
+                Vector3 fwd = cam.transform.forward;
+                fwd.y = 0f;
+                fwd.Normalize();
+                Vector3 right = cam.transform.right;
+                right.y = 0f;
+                right.Normalize();
+                moveDir = (fwd * moveInput.y) + (right * moveInput.x);
+            }
+            else
+            {
+                moveDir = new Vector3(moveInput.x, 0f, moveInput.y);
+            }
 
-            // Move visually forward + laterally within the fixed corridor width
-            Vector3 lateralMove = transform.right * lateralInput * lateralSpeed * Time.fixedDeltaTime;
-            Vector3 forwardMove = transform.forward * forwardInput * swimSpeed * Time.fixedDeltaTime;
-            Vector3 nextPos = rb.position + forwardMove + lateralMove;
+            // Upstream river current resistance (gentle downstream drift unless swimming)
+            float currentResistance = 0.45f;
 
-            // clamp lateral position so the player can't swim off the visual river banks
-            float lateralOffset = Vector3.Dot(nextPos - transform.position, transform.right);
-            nextPos = Vector3.ClampMagnitude(nextPos - transform.position, corridorWidth * 0.5f) + transform.position;
-            rb.MovePosition(nextPos);
+            // Sprint check
+            bool isSprinting = false;
+            bool isDiving = false;
+#if ENABLE_INPUT_SYSTEM
+            try
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb != null)
+                {
+                    isSprinting = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+                    isDiving = kb.leftCtrlKey.isPressed || kb.cKey.isPressed || kb.spaceKey.isPressed;
+                }
+            }
+            catch {}
+#else
+            isSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            isDiving = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.C) || Input.GetKey(KeyCode.Space);
+#endif
+
+            if (moveDir.sqrMagnitude > 0.01f)
+            {
+                moveDir.Normalize();
+                Quaternion targetRot = Quaternion.LookRotation(moveDir, Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, turnSpeedDeg * Time.fixedDeltaTime);
+
+                float speed = swimSpeed * (isSprinting ? sprintMultiplier : 1f);
+                Vector3 movement = transform.forward * speed * Time.fixedDeltaTime;
+
+                // Subtract slight river current resistance when swimming upstream
+                if (transform.forward.z > 0f)
+                {
+                    movement.z -= currentResistance * Time.fixedDeltaTime;
+                }
+
+                rb.MovePosition(rb.position + movement);
+            }
+
+            // Depth control (normal cruise depth vs deep dive to pass under net lines)
+            Vector3 pos = rb.position;
+            float targetY = isDiving ? diveY : cruiseY;
+            pos.y = Mathf.MoveTowards(pos.y, targetY, 2.5f * Time.fixedDeltaTime);
+
+            // Clamp to river channel
+            pos.x = Mathf.Clamp(pos.x, minX, maxX);
+            pos.z = Mathf.Clamp(pos.z, minZ, maxZ);
+            rb.position = pos;
+
+            // Calculate progress km based on world position progress from startZ (-275) to goalZ (-125)
+            float totalRiverLength = Mathf.Abs(riverGoalZ - riverStartZ); // 150m
+            float currentWorldProgress = Mathf.Clamp(pos.z - riverStartZ, 0f, totalRiverLength);
+            float progressRatio = Mathf.Clamp01(currentWorldProgress / totalRiverLength);
+
+            float maxCorridorKm = levelData.corridor[levelData.corridor.Count - 1].distanceFromMouthKm; // 130 km
+            distanceTravelledKm = progressRatio * maxCorridorKm;
 
             UpdateCurrentSegment();
             EvaluateSafety();
 
-            animator.SetFloat(SpeedHash, forwardInput);
+            animator.SetFloat(SpeedHash, moveDir.magnitude);
         }
 
         private void UpdateCurrentSegment()
         {
-            // advance through the corridor list as distanceTravelledKm increases
             while (currentSegmentIndex < levelData.corridor.Count - 1 &&
                    distanceTravelledKm >= levelData.corridor[currentSegmentIndex + 1].distanceFromMouthKm)
             {
@@ -112,6 +207,8 @@ namespace SundarbanGuardian.Player
         private void EvaluateSafety()
         {
             var p = CurrentPoint;
+            if (p == null) return;
+
             bool safe = p.actualSalinityPSU >= p.minSafeSalinityPSU && p.actualSalinityPSU <= p.maxSafeSalinityPSU;
 
             animator.SetBool(StressedHash, !safe);
@@ -119,23 +216,22 @@ namespace SundarbanGuardian.Player
             if (!safe && health != null)
             {
                 health.TakeDamage(outOfRangeDamagePerSec * Time.fixedDeltaTime);
-                // gentle push back downstream while conditions are unsafe —
-                // models the real behavior of fish holding position / retreating
-                // when salinity is outside their tolerance
-                distanceTravelledKm -= 0.02f;
+                // Push fish back downstream slightly when stressed
+                Vector3 pos = rb.position;
+                pos.z -= 0.6f * Time.fixedDeltaTime;
+                rb.position = pos;
             }
 
             HudEvents.RaiseEnteredHazardZone(
                 safe ? "low" : "high",
                 p.actualSalinityPSU,
-                "PSU salinity");
+                $"PSU salinity ({p.location})");
         }
 
         public bool HasReachedSpawningGrounds()
         {
             if (levelData == null || levelData.corridor.Count == 0) return false;
-            float finalPointKm = levelData.corridor[levelData.corridor.Count - 1].distanceFromMouthKm;
-            return distanceTravelledKm >= finalPointKm;
+            return transform.position.z >= riverGoalZ || distanceTravelledKm >= 128f;
         }
     }
 }

@@ -20,10 +20,10 @@ namespace SundarbanGuardian.Player
         public Vector3 defaultOffset = new Vector3(0.36f, 1.26f, -2.15f); // Backwards compatibility
 
         [Header("Distance & Clearance Tuning")]
-        public float minDistance = 1.0f;       // Closest camera can get when obstructed
-        public float maxDistance = 4.5f;       // Furthest camera distance
-        public float sphereRadius = 0.22f;     // Radius of collision spherecast
-        public float collisionMargin = 0.25f;  // Safety cushion from obstacle surface
+        public float minDistance = 0.8f;       // Closest camera can get when obstructed
+        public float maxDistance = 5.0f;       // Furthest camera distance
+        public float sphereRadius = 0.18f;     // Radius of collision spherecast
+        public float collisionMargin = 0.18f;  // Safety cushion from obstacle surface
 
         [Header("Smoothing")]
         public float positionSmoothSpeed = 12.0f;
@@ -63,17 +63,22 @@ namespace SundarbanGuardian.Player
             }
         }
 
+        private Transform lastTarget;
+
         private void LateUpdate()
         {
             if (target == null || !target.gameObject.activeInHierarchy)
             {
                 FindActiveTarget();
                 if (target == null) return;
-                if (!isInitialized)
-                {
-                    currentYaw = target.eulerAngles.y;
-                    isInitialized = true;
-                }
+            }
+
+            if (target != lastTarget)
+            {
+                currentYaw = target.eulerAngles.y;
+                isInitialized = true;
+                lastTarget = target;
+                if (autoTuneForSpecies) ApplySpeciesPreset(target.name);
             }
 
             // Pivot around animal's upper body/shoulders
@@ -198,31 +203,32 @@ namespace SundarbanGuardian.Player
 
             if (animalName.Contains("Tiger"))
             {
-                pivotOffset = new Vector3(0f, 1.40f, 0f);
-                defaultDistance = 3.5f;
-                shoulderOffset = new Vector3(0.50f, 0.25f, 0f);
-                lookAheadDistance = 18.0f;
+                // Close cinematic: tiger fills ~60% of screen height, full body visible
+                pivotOffset    = new Vector3(0f, 1.10f, 0f);  // Mid-body pivot (not too high)
+                defaultDistance = 2.2f;                        // Very close Free-Fire style
+                shoulderOffset  = new Vector3(0.45f, 0.10f, 0f); // Slight right shoulder
+                lookAheadDistance = 14.0f;
             }
             else if (animalName.Contains("Deer"))
             {
-                pivotOffset = new Vector3(0f, 1.10f, 0f);
-                defaultDistance = 2.15f;
-                shoulderOffset = new Vector3(0.36f, 0.16f, 0f);
-                lookAheadDistance = 15.0f;
+                pivotOffset    = new Vector3(0f, 0.85f, 0f);  // Deer is shorter
+                defaultDistance = 1.8f;
+                shoulderOffset  = new Vector3(0.30f, 0.08f, 0f);
+                lookAheadDistance = 12.0f;
             }
             else if (animalName.Contains("Dolphin"))
             {
-                pivotOffset = new Vector3(0f, 1.20f, 0f);
-                defaultDistance = 9.5f;
-                shoulderOffset = new Vector3(1.60f, 1.20f, 0f);
-                lookAheadDistance = 25.0f;
+                pivotOffset    = new Vector3(0f, 0.90f, 0f);
+                defaultDistance = 4.0f;                        // Pulled in vs previous 9.5
+                shoulderOffset  = new Vector3(0.80f, 0.60f, 0f);
+                lookAheadDistance = 20.0f;
             }
             else if (animalName.Contains("Hilsha"))
             {
-                pivotOffset = new Vector3(0f, 0.35f, 0f);
-                defaultDistance = 2.5f;
-                shoulderOffset = new Vector3(0.38f, 0.28f, 0f);
-                lookAheadDistance = 18.0f;
+                pivotOffset    = new Vector3(0f, 0.25f, 0f);
+                defaultDistance = 2.0f;
+                shoulderOffset  = new Vector3(0.30f, 0.20f, 0f);
+                lookAheadDistance = 14.0f;
             }
             baseDistance = defaultDistance;
         }

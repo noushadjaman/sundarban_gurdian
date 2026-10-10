@@ -103,6 +103,7 @@ namespace SundarbanGuardian.UI
         private void Awake()
         {
             if (Instance == null) Instance = this;
+            SundarbanGuardian.Core.HudController.EnsureEventSystem();
             LoadFont();
             LoadBackgroundTextures();
             LoadUISprites();
@@ -132,6 +133,22 @@ namespace SundarbanGuardian.UI
         {
             if (!IsIntroActive) return;
 
+#if ENABLE_INPUT_SYSTEM
+            if (UnityEngine.InputSystem.Keyboard.current != null)
+            {
+                if (UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame ||
+                    UnityEngine.InputSystem.Keyboard.current.enterKey.wasPressedThisFrame ||
+                    UnityEngine.InputSystem.Keyboard.current.rightArrowKey.wasPressedThisFrame)
+                {
+                    NextSlide();
+                }
+                else if (UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
+                {
+                    SkipIntro();
+                }
+            }
+#endif
+
             // Breathing scale pulse on Next button for clear mobile interaction cue
             if (btnNext != null)
             {
@@ -156,17 +173,23 @@ namespace SundarbanGuardian.UI
             }
         }
 
-        public void LoadFont()
+        public Font LoadFont()
         {
+            if (mainFont != null) return mainFont;
             mainFont = Resources.Load<Font>("Fonts/SegoeUI");
+            if (mainFont == null) mainFont = Resources.Load<Font>("Fonts/Kalpurush");
 #if UNITY_EDITOR
             if (mainFont == null)
                 mainFont = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/SegoeUI.ttf");
             if (mainFont == null)
                 mainFont = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Kalpurush.ttf");
 #endif
-            if (mainFont == null) mainFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (mainFont == null) mainFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            if (mainFont == null)
+            {
+                try { mainFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); }
+                catch { }
+            }
+            return mainFont;
         }
 
         public void LoadBackgroundTextures()
@@ -332,6 +355,57 @@ namespace SundarbanGuardian.UI
             GameObject canvasGo = GameObject.Find("Intro_Data_Canvas");
             if (canvasGo == null) return;
 
+            SundarbanGuardian.Core.HudController.EnsureEventSystem();
+
+            Font f = LoadFont();
+            var allTexts = canvasGo.GetComponentsInChildren<Text>(true);
+            foreach (var t in allTexts)
+            {
+                if (t.font == null && f != null)
+                {
+                    t.font = f;
+                }
+                t.raycastTarget = false;
+            }
+
+            // Disable raycast target on non-interactive backdrop and decorative overlays
+            Transform bgSat = canvasGo.transform.Find("Background_Satellite");
+            if (bgSat != null)
+            {
+                var rimg = bgSat.GetComponent<RawImage>();
+                if (rimg != null) rimg.raycastTarget = false;
+                var sec = bgSat.Find("Background_Secondary");
+                if (sec != null)
+                {
+                    var secRimg = sec.GetComponent<RawImage>();
+                    if (secRimg != null) secRimg.raycastTarget = false;
+                }
+            }
+            Transform scrim = canvasGo.transform.Find("Cinematic_Gradient_Scrim");
+            if (scrim != null)
+            {
+                var img = scrim.GetComponent<Image>();
+                if (img != null) img.raycastTarget = false;
+            }
+            Transform vig = canvasGo.transform.Find("Vignette_Overlay");
+            if (vig != null)
+            {
+                var img = vig.GetComponent<Image>();
+                if (img != null) img.raycastTarget = false;
+            }
+            Transform autoAdv = canvasGo.transform.Find("AutoAdvance_Progress_Track");
+            if (autoAdv != null)
+            {
+                var img = autoAdv.GetComponent<Image>();
+                if (img != null) img.raycastTarget = false;
+                var fill = autoAdv.Find("Fill");
+                if (fill != null)
+                {
+                    var fImg = fill.GetComponent<Image>();
+                    if (fImg != null) fImg.raycastTarget = false;
+                }
+            }
+
             string[] slideNames = {
                 "Slide_1_Title",
                 "Slide_2_ForestDecline",
@@ -443,7 +517,17 @@ namespace SundarbanGuardian.UI
                     if (sc != null) speciesCards[i] = sc.gameObject;
                 }
                 var bsm = slides[5].transform.Find("Btn_Start_Mission");
-                if (bsm != null) btnStartMission = bsm.GetComponent<Button>();
+                if (bsm != null)
+                {
+                    btnStartMission = bsm.GetComponent<Button>();
+                    if (btnStartMission != null)
+                    {
+                        btnStartMission.onClick.RemoveAllListeners();
+                        btnStartMission.onClick.AddListener(SkipIntro);
+                        var img = btnStartMission.GetComponent<Image>();
+                        if (img != null) img.raycastTarget = true;
+                    }
+                }
             }
 
             // Navigation elements
@@ -452,15 +536,38 @@ namespace SundarbanGuardian.UI
                 var bNext = canvasGo.transform.Find("Bottom_Nav_Bar/Btn_Next");
                 if (bNext != null) btnNext = bNext.GetComponent<Button>();
             }
+            if (btnNext != null)
+            {
+                btnNext.onClick.RemoveAllListeners();
+                btnNext.onClick.AddListener(NextSlide);
+                var img = btnNext.GetComponent<Image>();
+                if (img != null) img.raycastTarget = true;
+            }
+
             if (btnPrev == null)
             {
                 var bPrev = canvasGo.transform.Find("Bottom_Nav_Bar/Btn_Prev");
                 if (bPrev != null) btnPrev = bPrev.GetComponent<Button>();
             }
+            if (btnPrev != null)
+            {
+                btnPrev.onClick.RemoveAllListeners();
+                btnPrev.onClick.AddListener(PreviousSlide);
+                var img = btnPrev.GetComponent<Image>();
+                if (img != null) img.raycastTarget = true;
+            }
+
             if (btnSkip == null)
             {
                 var bSkip = canvasGo.transform.Find("Btn_Skip");
                 if (bSkip != null) btnSkip = bSkip.GetComponent<Button>();
+            }
+            if (btnSkip != null)
+            {
+                btnSkip.onClick.RemoveAllListeners();
+                btnSkip.onClick.AddListener(SkipIntro);
+                var img = btnSkip.GetComponent<Image>();
+                if (img != null) img.raycastTarget = true;
             }
         }
 
@@ -1916,6 +2023,7 @@ namespace SundarbanGuardian.UI
             bsTxt.alignment = TextAnchor.MiddleCenter;
             bsTxt.color = Color.white;
             bsTxt.text = "ENTER SUNDARBANS ▶";
+            bsTxt.raycastTarget = false;
             var bsO = bsTxtGo.AddComponent<Outline>();
             bsO.effectColor = new Color(0.05f, 0.25f, 0.12f, 0.98f);
             bsO.effectDistance = new Vector2(2f, -2f);
@@ -1954,6 +2062,7 @@ namespace SundarbanGuardian.UI
             sTxt.alignment = TextAnchor.MiddleCenter;
             sTxt.color = new Color(0.85f, 0.90f, 0.95f);
             sTxt.text = "Skip ⏭️";
+            sTxt.raycastTarget = false;
             var sO = sTxtGo.AddComponent<Outline>();
             sO.effectColor = Color.black;
             sO.effectDistance = new Vector2(1.5f, -1.5f);
@@ -1995,6 +2104,7 @@ namespace SundarbanGuardian.UI
             pTxt.alignment = TextAnchor.MiddleCenter;
             pTxt.color = new Color(0.85f, 0.9f, 0.95f);
             pTxt.text = "❮ PREVIOUS";
+            pTxt.raycastTarget = false;
             var pO = pTxtGo.AddComponent<Outline>();
             pO.effectColor = Color.black;
             pO.effectDistance = new Vector2(1.5f, -1.5f);
@@ -2027,6 +2137,7 @@ namespace SundarbanGuardian.UI
             nTxt.alignment = TextAnchor.MiddleCenter;
             nTxt.color = Color.white;
             nTxt.text = "NEXT ❯";
+            nTxt.raycastTarget = false;
             var nO = nTxtGo.AddComponent<Outline>();
             nO.effectColor = new Color(0.05f, 0.25f, 0.12f, 0.98f);
             nO.effectDistance = new Vector2(1.5f, -1.5f);
@@ -2087,6 +2198,7 @@ namespace SundarbanGuardian.UI
             var img = cardGo.GetComponent<Image>();
             bgColor.a = Mathf.Max(bgColor.a, 0.96f);
             img.color = bgColor;
+            img.raycastTarget = false;
 
             var outline = cardGo.AddComponent<Outline>();
             outline.effectColor = rimColor;
@@ -2107,12 +2219,15 @@ namespace SundarbanGuardian.UI
             sRt.sizeDelta = new Vector2(0f, 3.5f);
             var sImg = stripeGo.GetComponent<Image>();
             sImg.color = rimColor;
+            sImg.raycastTarget = false;
 
             return cardGo;
         }
 
         private Text CreateText(Transform parent, string content, Font font, int fontSize, FontStyle style, Color color, TextAnchor align, Vector2 anchor, Vector2 size)
         {
+            if (font == null) font = LoadFont();
+
             GameObject txtGo = new GameObject("Text", typeof(RectTransform), typeof(Text));
             txtGo.transform.SetParent(parent, false);
             var rt = txtGo.GetComponent<RectTransform>();
@@ -2140,6 +2255,7 @@ namespace SundarbanGuardian.UI
             txt.horizontalOverflow = HorizontalWrapMode.Wrap;
             txt.verticalOverflow = VerticalWrapMode.Overflow;
             txt.text = content;
+            txt.raycastTarget = false;
 
             var outline = txtGo.AddComponent<Outline>();
             outline.effectColor = new Color(0f, 0f, 0f, 0.95f);
@@ -2161,6 +2277,7 @@ namespace SundarbanGuardian.UI
             var img = badgeGo.GetComponent<Image>();
             bgColor.a = Mathf.Max(bgColor.a, 0.96f);
             img.color = bgColor;
+            img.raycastTarget = false;
 
             var outline = badgeGo.AddComponent<Outline>();
             outline.effectColor = new Color(0.35f, 0.85f, 1.0f, 0.95f);
@@ -2170,7 +2287,7 @@ namespace SundarbanGuardian.UI
             shadow.effectColor = new Color(0f, 0f, 0f, 0.90f);
             shadow.effectDistance = new Vector2(3f, -3f);
 
-            CreateText(badgeGo.transform, label, mainFont, 15, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter,
+            CreateText(badgeGo.transform, label, LoadFont(), 15, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter,
                 new Vector2(0.5f, 0.5f), size);
 
             return badgeGo;
@@ -2194,6 +2311,7 @@ namespace SundarbanGuardian.UI
                 img.type = Image.Type.Sliced;
             }
             img.color = new Color(0.03f, 0.07f, 0.05f, 0.72f);
+            img.raycastTarget = false;
 
             var outline = tagGo.AddComponent<Outline>();
             outline.effectColor = new Color(0.18f, 0.75f, 0.45f, 0.35f);
@@ -2203,7 +2321,7 @@ namespace SundarbanGuardian.UI
             shadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
             shadow.effectDistance = new Vector2(2f, -2f);
 
-            CreateText(tagGo.transform, label, mainFont, 13, FontStyle.Bold,
+            CreateText(tagGo.transform, label, LoadFont(), 13, FontStyle.Bold,
                 new Color(0.75f, 0.95f, 0.85f), TextAnchor.MiddleCenter,
                 new Vector2(0.5f, 0.5f), size);
 
@@ -2228,6 +2346,7 @@ namespace SundarbanGuardian.UI
                 img.type = Image.Type.Sliced;
             }
             img.color = bgColor;
+            img.raycastTarget = false;
 
             var shadow = cardGo.AddComponent<Shadow>();
             shadow.effectColor = new Color(0f, 0f, 0f, 0.65f);
@@ -2249,6 +2368,7 @@ namespace SundarbanGuardian.UI
 
             var img = lineGo.GetComponent<Image>();
             img.color = new Color(1f, 1f, 1f, 0.12f);
+            img.raycastTarget = false;
 
             return lineGo;
         }
@@ -2265,7 +2385,7 @@ namespace SundarbanGuardian.UI
             rt.sizeDelta = new Vector2(550f, 32f);
 
             var txt = txtGo.GetComponent<Text>();
-            txt.font = mainFont;
+            txt.font = LoadFont();
             txt.fontSize = fontSize;
             txt.fontStyle = FontStyle.Normal;
             txt.color = color;
@@ -2273,6 +2393,7 @@ namespace SundarbanGuardian.UI
             txt.horizontalOverflow = HorizontalWrapMode.Wrap;
             txt.verticalOverflow = VerticalWrapMode.Overflow;
             txt.text = content;
+            txt.raycastTarget = false;
 
             var shadow = txtGo.AddComponent<Shadow>();
             shadow.effectColor = new Color(0f, 0f, 0f, 0.85f);
@@ -2296,6 +2417,45 @@ namespace SundarbanGuardian.UI
             controller.LoadBackgroundTextures();
             controller.LoadUISprites();
             controller.EnsureUIBuilt(true);
+
+            // Wire persistent button listeners for rock-solid scene serialization
+            var canvasGo = GameObject.Find("Intro_Data_Canvas");
+            if (canvasGo != null)
+            {
+                var bSkip = canvasGo.transform.Find("Btn_Skip")?.GetComponent<Button>();
+                var bNext = canvasGo.transform.Find("Bottom_Nav_Bar/Btn_Next")?.GetComponent<Button>();
+                var bPrev = canvasGo.transform.Find("Bottom_Nav_Bar/Btn_Prev")?.GetComponent<Button>();
+                var bStart = canvasGo.transform.Find("Slide_6_Transition/Btn_Start_Mission")?.GetComponent<Button>();
+
+                if (bSkip != null)
+                {
+                    while (bSkip.onClick.GetPersistentEventCount() > 0)
+                        UnityEditor.Events.UnityEventTools.RemovePersistentListener(bSkip.onClick, 0);
+                    UnityEditor.Events.UnityEventTools.AddPersistentListener(bSkip.onClick, new UnityEngine.Events.UnityAction(controller.SkipIntro));
+                    UnityEditor.EditorUtility.SetDirty(bSkip.gameObject);
+                }
+                if (bNext != null)
+                {
+                    while (bNext.onClick.GetPersistentEventCount() > 0)
+                        UnityEditor.Events.UnityEventTools.RemovePersistentListener(bNext.onClick, 0);
+                    UnityEditor.Events.UnityEventTools.AddPersistentListener(bNext.onClick, new UnityEngine.Events.UnityAction(controller.NextSlide));
+                    UnityEditor.EditorUtility.SetDirty(bNext.gameObject);
+                }
+                if (bPrev != null)
+                {
+                    while (bPrev.onClick.GetPersistentEventCount() > 0)
+                        UnityEditor.Events.UnityEventTools.RemovePersistentListener(bPrev.onClick, 0);
+                    UnityEditor.Events.UnityEventTools.AddPersistentListener(bPrev.onClick, new UnityEngine.Events.UnityAction(controller.PreviousSlide));
+                    UnityEditor.EditorUtility.SetDirty(bPrev.gameObject);
+                }
+                if (bStart != null)
+                {
+                    while (bStart.onClick.GetPersistentEventCount() > 0)
+                        UnityEditor.Events.UnityEventTools.RemovePersistentListener(bStart.onClick, 0);
+                    UnityEditor.Events.UnityEventTools.AddPersistentListener(bStart.onClick, new UnityEngine.Events.UnityAction(controller.SkipIntro));
+                    UnityEditor.EditorUtility.SetDirty(bStart.gameObject);
+                }
+            }
 
             // Build and wire Timeline for Slide 5 cutscene
             var editorType = System.Type.GetType("SundarbanGuardian.Editor.IntroTimelineBuilder, Assembly-CSharp-Editor");

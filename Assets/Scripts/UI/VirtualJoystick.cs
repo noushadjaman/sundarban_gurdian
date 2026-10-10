@@ -36,7 +36,9 @@ namespace SundarbanGuardian.UI
 
         public void OnDrag(PointerEventData eventData)
         {
+            if (backgroundRing == null) backgroundRing = GetComponent<RectTransform>();
             if (backgroundRing == null || handleKnob == null) return;
+            if (parentCanvas == null) parentCanvas = GetComponentInParent<Canvas>();
 
             Camera cam = null;
             if (parentCanvas != null && parentCanvas.renderMode != RenderMode.ScreenSpaceOverlay)

@@ -1,40 +1,85 @@
 {
   "levelId": "level_dolphin_01",
   "speciesId": "gangetic_dolphin",
-  "realCoordinateName": "Passur River Estuary to Bay of Bengal",
-  "latitude": 21.82,
-  "longitude": 89.60,
+  "realCoordinateName": "Passur River Headwaters to Bay of Bengal Estuary",
+  "latitude": 22.45,
+  "longitude": 89.62,
   "dataSource": "NASA PO.DAAC SMAP Salinity & BFRI Estuary Survey",
-  "factTextBn": "ডলফিন উন্মুক্ত সাগরে পৌঁছেছে। তবে মেঘনা মোহনায় অতিরিক্ত পলি ও দূষণের কারণে শুশুক ও ইরাবতী ডলফিনের প্রাকৃতিক আবাস দ্রুত নষ্ট হচ্ছে।",
-  "startZone": { "centerX": 42, "centerZ": 145, "radius": 4 },
-  "goalZone": { "centerX": 42, "centerZ": -65, "radius": 16 },
+  "factTextBn": "The Gangetic Dolphin navigates downstream from the deep northern jungle rivers toward the open Bay of Bengal estuary. Dodge illegal current nets (কারেন্ট জাল), dive under loud motorized trawlers, breach for vital oxygen, and escape crocodiles to reach the safe ocean haven!",
+  "startZone": { "centerX": 8.0, "centerZ": 255.0, "radius": 18.0 },
+  "goalZone": { "centerX": 5.0, "centerZ": -105.0, "radius": 26.0 },
   "hazardZones": [
     {
-      "zoneId": "motorized_trawler_01",
-      "centerX": 42,
-      "centerZ": 85,
-      "radius": 12,
+      "zoneId": "upstream_monofilament_gillnet",
+      "centerX": 6.0,
+      "centerZ": 225.0,
+      "radius": 18.0,
+      "riskTier": "high",
+      "rawDataValue": 96.0,
+      "rawDataUnit": "% Banned Monofilament Current Gillnet Density"
+    },
+    {
+      "zoneId": "motorized_cargo_trawler_north",
+      "centerX": 10.0,
+      "centerZ": 180.0,
+      "radius": 22.0,
       "riskTier": "high",
       "rawDataValue": 88.0,
-      "rawDataUnit": "dB ট্রলার মোটরের তীব্র শব্দদূষণ"
+      "rawDataUnit": "dB Motorized Trawler Engine Acoustic Pollution"
     },
     {
-      "zoneId": "crocodile_territory_01",
-      "centerX": 38,
-      "centerZ": 48,
-      "radius": 10,
+      "zoneId": "polluted_water_oil_slick",
+      "centerX": 6.0,
+      "centerZ": 160.0,
+      "radius": 24.0,
+      "riskTier": "polluted",
+      "rawDataValue": 85.0,
+      "rawDataUnit": "PPM River Toxic Oil Slick & Bilge Runoff"
+    },
+    {
+      "zoneId": "accordion_box_trap_barrier",
+      "centerX": 4.0,
+      "centerZ": 125.0,
+      "radius": 18.0,
       "riskTier": "high",
-      "rawDataValue": 40.0,
-      "rawDataUnit": "মোহনা কুমির এলাকা"
+      "rawDataValue": 92.0,
+      "rawDataUnit": "% Accordion Box Net Choke-Point"
     },
     {
-      "zoneId": "shallow_mudbank_01",
-      "centerX": 42,
-      "centerZ": 0,
-      "radius": 14,
+      "zoneId": "shallow_silt_shoal_narrows",
+      "centerX": 8.0,
+      "centerZ": 85.0,
+      "radius": 20.0,
       "riskTier": "medium",
-      "rawDataValue": 1.2,
-      "rawDataUnit": "m গভীরতাহীন পলিযুক্ত অগভীর চ্যানেল"
+      "rawDataValue": 1.1,
+      "rawDataUnit": "m Silt-Choked Shallow Shoal"
+    },
+    {
+      "zoneId": "polluted_industrial_chemical_basin",
+      "centerX": 5.0,
+      "centerZ": 15.0,
+      "radius": 24.0,
+      "riskTier": "polluted",
+      "rawDataValue": 95.0,
+      "rawDataUnit": "PPM Chemical Contamination & Shipyard Effluent"
+    },
+    {
+      "zoneId": "high_speed_trawler_channel",
+      "centerX": 7.0,
+      "centerZ": -25.0,
+      "radius": 22.0,
+      "riskTier": "high",
+      "rawDataValue": 90.0,
+      "rawDataUnit": "dB High-Speed Trawler Propeller Strike Lane"
+    },
+    {
+      "zoneId": "estuary_mouth_gillnet_maze",
+      "centerX": 5.0,
+      "centerZ": -70.0,
+      "radius": 22.0,
+      "riskTier": "high",
+      "rawDataValue": 98.0,
+      "rawDataUnit": "% Estuary Mouth Choke-Point Banned Netting"
     }
   ]
 }

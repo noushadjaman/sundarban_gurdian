@@ -114,8 +114,8 @@ CapsuleCollider:
   m_Radius: 0.5
   m_Height: 3.2
   m_Direction: 1
-  m_Center: {x: 0.5, y: 1.6, z: 0}
---- !u!43 &1177271319844635940
+  m_Center: {x: 0, y: 1.6, z: 0}
+--- !u!43 &8223318130783463421
 Mesh:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

@@ -41,41 +41,92 @@ namespace SundarbanGuardian.Core
             return data;
         }
 
+        private List<GameObject> spawnedRuntimeObjects = new List<GameObject>();
+
+        public void ClearSpawnedZones()
+        {
+            foreach (var go in spawnedRuntimeObjects)
+            {
+                if (go != null)
+                {
+                    if (Application.isPlaying) Destroy(go);
+                    else DestroyImmediate(go);
+                }
+            }
+            spawnedRuntimeObjects.Clear();
+
+            // Clear any lingering cloned markers under LevelLoader transform
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var child = transform.GetChild(i).gameObject;
+                if (Application.isPlaying) Destroy(child);
+                else DestroyImmediate(child);
+            }
+        }
+
         private void SpawnZones(LevelData data)
         {
-            if (data.hazardZones == null) return;
+            ClearSpawnedZones();
 
-            foreach (HazardZone zone in data.hazardZones)
+            var existingDangerRoot = GameObject.Find("[Danger_Zones]");
+            if (existingDangerRoot != null)
             {
-                Vector3 pos = new Vector3(zone.centerX, 0.05f, zone.centerZ);
-                GameObject go = Instantiate(hazardZonePrefab, pos, Quaternion.identity, transform);
-                go.transform.localScale = new Vector3(zone.radius * 2f, 0.1f, zone.radius * 2f);
-
-                var trigger = go.GetComponent<HazardZoneTrigger>();
-                if (trigger != null)
+                // Only activate handcrafted danger zones for Tiger round
+                bool isTiger = (data.speciesId != null && data.speciesId.ToLower().Contains("tiger"));
+                existingDangerRoot.SetActive(isTiger);
+                if (isTiger && existingDangerRoot.transform.childCount > 0)
                 {
-                    trigger.riskTier = zone.riskTier;
-                    trigger.rawDataValue = zone.rawDataValue;
-                    trigger.rawDataUnit = zone.rawDataUnit;
-                }
-
-                var renderer = go.GetComponentInChildren<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.material.color = zone.riskTier switch
+                    Debug.Log("[LevelLoader] Using existing handcrafted [Danger_Zones] for Tiger.");
+                    if (startMarkerPrefab != null && data.startZone != null)
                     {
-                        "high" => highRiskColor,
-                        "medium" => mediumRiskColor,
-                        _ => lowRiskColor
-                    };
+                        var sm = Instantiate(startMarkerPrefab, new Vector3(data.startZone.centerX, 0f, data.startZone.centerZ), Quaternion.identity, transform);
+                        spawnedRuntimeObjects.Add(sm);
+                    }
+                    if (goalMarkerPrefab != null && data.goalZone != null)
+                    {
+                        var gm = Instantiate(goalMarkerPrefab, new Vector3(data.goalZone.centerX, 0f, data.goalZone.centerZ), Quaternion.identity, transform);
+                        spawnedRuntimeObjects.Add(gm);
+                    }
+                    return;
+                }
+            }
+
+            if (data.hazardZones != null && hazardZonePrefab != null)
+            {
+                foreach (HazardZone zone in data.hazardZones)
+                {
+                    Vector3 pos = new Vector3(zone.centerX, 0.05f, zone.centerZ);
+                    GameObject go = Instantiate(hazardZonePrefab, pos, Quaternion.identity, transform);
+                    go.transform.localScale = new Vector3(zone.radius * 2f, 0.1f, zone.radius * 2f);
+                    spawnedRuntimeObjects.Add(go);
+
+                    var trigger = go.GetComponent<HazardZoneTrigger>();
+                    if (trigger != null)
+                    {
+                        trigger.riskTier = zone.riskTier;
+                        trigger.rawDataValue = zone.rawDataValue;
+                        trigger.rawDataUnit = zone.rawDataUnit;
+                    }
+
+                    // Hide flat red ground discs — mud ground remains 100% natural, danger zones shown on minimap radar
+                    foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                    {
+                        r.enabled = false;
+                    }
                 }
             }
 
             if (startMarkerPrefab != null && data.startZone != null)
-                Instantiate(startMarkerPrefab, new Vector3(data.startZone.centerX, 0f, data.startZone.centerZ), Quaternion.identity);
+            {
+                var sm = Instantiate(startMarkerPrefab, new Vector3(data.startZone.centerX, 0f, data.startZone.centerZ), Quaternion.identity, transform);
+                spawnedRuntimeObjects.Add(sm);
+            }
 
             if (goalMarkerPrefab != null && data.goalZone != null)
-                Instantiate(goalMarkerPrefab, new Vector3(data.goalZone.centerX, 0f, data.goalZone.centerZ), Quaternion.identity);
+            {
+                var gm = Instantiate(goalMarkerPrefab, new Vector3(data.goalZone.centerX, 0f, data.goalZone.centerZ), Quaternion.identity, transform);
+                spawnedRuntimeObjects.Add(gm);
+            }
         }
     }
 }

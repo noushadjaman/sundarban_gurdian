@@ -16,6 +16,7 @@ namespace SundarbanGuardian.Player
 
         public static event Action<bool> AutoRunStateChanged;
         public static event Action OnHitActionTriggered;
+        public static event Action OnJumpTriggered;
 
         // ── Touch Look Orbit ──
         public static Vector2 LookDelta { get; set; } = Vector2.zero;
@@ -28,7 +29,6 @@ namespace SundarbanGuardian.Player
         {
             Vector2 input = JoystickInput;
 
-            // Keyboard fallback for editor/PC (supporting both new Input System & legacy)
 #if ENABLE_INPUT_SYSTEM
             try
             {
@@ -43,9 +43,6 @@ namespace SundarbanGuardian.Player
                     if (kb.wKey.isPressed || kb.upArrowKey.isPressed) kV += 1f;
 
                     if (Mathf.Abs(kH) > 0.05f || Mathf.Abs(kV) > 0.05f) input = new Vector2(kH, kV);
-
-                    if (kb.rKey.wasPressedThisFrame) ToggleAutoRun();
-                    if (kb.spaceKey.wasPressedThisFrame || kb.fKey.wasPressedThisFrame) TriggerHitAction();
                 }
             }
             catch (System.Exception) { }
@@ -59,9 +56,6 @@ namespace SundarbanGuardian.Player
                 {
                     input = new Vector2(keyH, keyV);
                 }
-
-                if (Input.GetKeyDown(KeyCode.R)) ToggleAutoRun();
-                if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.F)) TriggerHitAction();
             }
             catch (System.Exception) { }
 #endif
@@ -80,7 +74,34 @@ namespace SundarbanGuardian.Player
                 }
             }
 
+            PollKeyboardShortcuts();
             return Vector2.ClampMagnitude(input, 1f);
+        }
+
+        public static void PollKeyboardShortcuts()
+        {
+#if ENABLE_INPUT_SYSTEM
+            try
+            {
+                if (UnityEngine.InputSystem.Keyboard.current != null)
+                {
+                    var kb = UnityEngine.InputSystem.Keyboard.current;
+                    if (kb.rKey.wasPressedThisFrame) ToggleAutoRun();
+                    if (kb.spaceKey.wasPressedThisFrame) TriggerJump();
+                    if (kb.fKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame) TriggerHitAction();
+                }
+            }
+            catch (System.Exception) { }
+#endif
+#if !ENABLE_INPUT_SYSTEM
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.R)) ToggleAutoRun();
+                if (Input.GetKeyDown(KeyCode.Space)) TriggerJump();
+                if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.Return)) TriggerHitAction();
+            }
+            catch (System.Exception) { }
+#endif
         }
 
         public static void ToggleAutoRun()
@@ -95,6 +116,11 @@ namespace SundarbanGuardian.Player
                 IsAutoRunning = state;
                 AutoRunStateChanged?.Invoke(IsAutoRunning);
             }
+        }
+
+        public static void TriggerJump()
+        {
+            OnJumpTriggered?.Invoke();
         }
 
         public static void TriggerHitAction()

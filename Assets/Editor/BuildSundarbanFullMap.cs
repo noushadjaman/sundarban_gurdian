@@ -47,44 +47,76 @@ namespace SundarbanGuardian.Editor
             return false;
         }
 
-        // River curve: Authentic meandering S-curves matching NASA Landsat delta radar & drone photo
+        // River curve: Authentic serpentine meandering S-curves with pronounced curves matching Landsat radar
         public static float RiverCenterX(float z)
         {
             float t = Mathf.InverseLerp(MapZMin, MapZMax, z);
-            return Mathf.Sin(t * Mathf.PI * 3.2f) * 26f
-                 + Mathf.Sin(t * Mathf.PI * 1.6f + 0.3f) * 12f;
+            // Harmonic sinuosity creating distinct river bends and meanders
+            return Mathf.Sin(t * Mathf.PI * 4.2f) * 28f
+                 + Mathf.Sin(t * Mathf.PI * 2.1f + 0.4f) * 16f
+                 + Mathf.Sin(t * Mathf.PI * 8.4f) * 4.5f;
         }
 
         public static float RiverHalfWidth(float z)
         {
             float t = Mathf.InverseLerp(MapZMin, MapZMax, z);
-            // Widens at the southern ocean estuary mouth, natural variation at meanders
-            float estuary = Mathf.Lerp(26f, 13.5f, Mathf.SmoothStep(0f, 0.35f, t));
-            float bendSwell = Mathf.Abs(Mathf.Sin(t * Mathf.PI * 3.2f)) * 3.5f;
+            // Authentic river channel width: 21m - 27m total (half-width 10.5m - 13.5m), widening to 22m at southern estuary
+            float u = Mathf.Clamp01(t / 0.35f);
+            float ss = u * u * (3.0f - 2.0f * u);
+            float estuary = Mathf.Lerp(22f, 10.5f, ss);
+            float bendSwell = Mathf.Abs(Mathf.Sin(t * Mathf.PI * 4.2f)) * 2.8f;
             return estuary + bendSwell;
         }
 
-        // Sea Beach Width: Expansive at southern ocean estuary (Kotka/Jamtola beach), authentic 16-24m wide along delta shorelines
+        // Shoreline intertidal beach / sand shelf width
         public static float BeachWidth(float z)
         {
             float t = Mathf.InverseLerp(MapZMin, MapZMax, z);
-            // At south ocean estuary (Z < 0): 28m to 35m wide sea beach
-            // Along central river: 18m to 24m wide
-            // Up north: 14m to 18m wide
-            float baseW = Mathf.Lerp(32f, 16f, Mathf.SmoothStep(0f, 0.45f, t));
-            float wave = Mathf.Sin(t * Mathf.PI * 4.2f) * 2.5f;
-            return Mathf.Clamp(baseW + wave, 14f, 38f);
+            float u = Mathf.Clamp01(t / 0.30f);
+            float ss = u * u * (3.0f - 2.0f * u);
+            float baseW = Mathf.Lerp(14f, 7.5f, ss);
+            float wave = Mathf.Sin(t * Mathf.PI * 5.0f) * 1.5f;
+            return Mathf.Clamp(baseW + wave, 6f, 16f);
         }
 
-        // Canals: strictly stay on their respective banks, NEVER crossing the Shibsa river!
+        // Exact physical ground surface elevation for seamless object placement
+        public static float GetGroundY(float x, float z)
+        {
+            float rxC = RiverCenterX(z);
+            float rhw = RiverHalfWidth(z);
+            float beachW = BeachWidth(z);
+            float dist = Mathf.Abs(x - rxC);
+
+            // Inside River channel
+            if (dist <= rhw)
+            {
+                float u = dist / rhw;
+                return Mathf.Lerp(-1.4f, WaterY, u * u);
+            }
+            // On sloping shoreline beach
+            if (dist <= rhw + beachW)
+            {
+                float tSlope = (dist - rhw) / beachW;
+                return Mathf.Lerp(WaterY, 0.48f, 0.5f - 0.5f * Mathf.Cos(tSlope * Mathf.PI));
+            }
+            // On solid elevated riverbank land
+            float outerLimit = (x < rxC) ? Mathf.Abs(MapXMin - (rxC - rhw - beachW)) : Mathf.Abs(MapXMax - (rxC + rhw + beachW));
+            float tInland = Mathf.Clamp01((dist - rhw - beachW) / Mathf.Max(outerLimit, 1f));
+            float baseH = Mathf.Lerp(0.48f, 0.76f, Mathf.Sqrt(tInland));
+            float rip1 = Mathf.Sin(x * 0.35f + z * 0.28f) * 0.042f;
+            float rip2 = Mathf.Cos(x * 0.18f - z * 0.45f) * 0.030f;
+            return baseH + rip1 + rip2;
+        }
+
+        // Canals: strictly stay far inland on their respective banks, leaving a massive 70m+ continuous land island after the river!
         private static readonly (float sz, float ez, float bx, float amp, float freq, float hw)[] Canals =
         {
-            (-80f, 180f, -65f,  8f, 2.1f, 4.0f),
-            (  0f, 115f, -50f,  4f, 2.5f, 3.2f),
-            (-60f, 200f,  74f,  8f, 1.8f, 4.5f),
-            ( 40f, 230f,  58f,  5f, 3.5f, 3.0f),
-            (150f, 275f,  68f,  6f, 2.2f, 3.5f),
-            (-90f,  20f, -80f,  5f, 4.0f, 2.8f),
+            (-80f, 180f, -88f,  5f, 2.1f, 3.2f),
+            (  0f, 115f, -76f,  4f, 2.5f, 2.8f),
+            (-60f, 200f,  88f,  5f, 1.8f, 3.2f),
+            ( 40f, 230f,  96f,  4f, 3.5f, 2.5f),
+            (150f, 275f,  85f,  4f, 2.2f, 2.8f),
+            (-90f,  20f, -95f,  4f, 4.0f, 2.5f),
         };
 
         public static float CanalCenterX(int idx, float z)
@@ -94,11 +126,11 @@ namespace SundarbanGuardian.Editor
             return c.bx + Mathf.Sin(t * Mathf.PI * c.freq) * c.amp;
         }
 
-        // Roads: ONLY on land banks, STRICTLY ZERO roads over river!
+        // Roads: ONLY on far inland banks, NEVER near the river
         private static readonly (float sz, float ez, float bx, float amp, float freq)[] Roads =
         {
-            (-90f, 270f, -82f, 8f, 2.4f), // West Bank
-            (-50f, 250f,  86f, 8f, 3.1f), // East Bank
+            (-90f, 270f, -98f, 5f, 2.4f), // Far inland West Bank
+            (-50f, 250f,  98f, 5f, 3.1f), // Far inland East Bank
         };
 
         public static float RoadCenterX(int idx, float z)
@@ -191,10 +223,14 @@ namespace SundarbanGuardian.Editor
         {
             var dict = new Dictionary<string, GameObject>();
             string[] names = {
-                // Low-Poly Stilt Root Mangrove Trees (<500 tris)
+                // Authentic Mangrove Forest Trees with Stilt Roots (Low-Poly LOD1)
+                "Tree_Stilt_Mangrove_LOD1",
+                "Tree_Stilt_Mangrove_Tall_LOD1",
+                "Tree_Mangrove_Canopy_LOD1",
+                "Tree_Mangrove_Bush_LOD1",
                 "Tree_LowPoly_Mangrove_Stilt",
                 "Tree_LowPoly_Mangrove_Overhanging",
-                // New Nature Pack (Quaternius + FallTree)
+                // Nature Pack (Quaternius + FallTree)
                 "Tree_New_CommonTree",
                 "Tree_New_Pine",
                 "Tree_New_Maple_1",
@@ -202,24 +238,29 @@ namespace SundarbanGuardian.Editor
                 "Tree_New_Maple_3",
                 "Tree_New_FallTree",
                 "Tree_New_DeadTree",
-                // Existing Low-Poly Tropical Palms
+                // Low-Poly Tropical Coastal Palms
                 "Tree_Lightweight_CoconutPalm",
                 "Tree_Lightweight_EvergladesPalm",
                 "Tree_Lightweight_TrianglePalm",
                 "Tree_Deco_DeadTree",
-                // Ground Details
+                // Authentic Mangrove Undergrowth (Ferns, Pencil Roots, Seedlings, Logs)
+                "Detail_Mangrove_Fern",
+                "Detail_Mangrove_Pneumatophore",
+                "Detail_Mangrove_Seedling",
+                "Detail_Mangrove_FallenLog",
                 "GrassPatch",
-                "Detail_Mangrove_Grass",
-                "Detail_Fallen_MangroveLog"
+                "Detail_Mangrove_Grass"
             };
 
             foreach (var n in names)
             {
-                var p = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/NatureNew/{n}.prefab");
-                if (p == null)
-                    p = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/LightweightNature/{n}.prefab");
+                var p = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/Environment/{n}.prefab");
                 if (p == null)
                     p = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/Trees/{n}.prefab");
+                if (p == null)
+                    p = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/NatureNew/{n}.prefab");
+                if (p == null)
+                    p = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/LightweightNature/{n}.prefab");
 
                 if (p != null) dict[n] = p;
             }
@@ -268,80 +309,53 @@ namespace SundarbanGuardian.Editor
             EditorUtility.SetDirty(canalMat);
             mats["canal"] = canalMat;
 
-            // West Bank Mud: Dark, wet intertidal silt flat with glistening tidal sheen
-            var mudWestMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/WestBank_Mud.mat");
-            if (mudWestMat == null)
+            // Authentic Intertidal Mangrove Mud Surface (matching trial asset and user reference image)
+            Material intertidalMat = null;
+            var glbAssets = AssetDatabase.LoadAllAssetsAtPath("Assets/ExternalModels/mangrove_environment.glb");
+            foreach (var a in glbAssets)
             {
-                mudWestMat = new Material(urpLit);
-                AssetDatabase.CreateAsset(mudWestMat, "Assets/Materials/WestBank_Mud.mat");
+                if (a is Material && a.name == "Mangrove_Mud")
+                {
+                    intertidalMat = (Material)a;
+                    break;
+                }
             }
-            mudWestMat.SetColor("_BaseColor", new Color(0.18f, 0.14f, 0.10f));
-            mudWestMat.SetFloat("_Smoothness", 0.78f);
-            mudWestMat.SetFloat("_Metallic", 0.04f);
-            var wetMudTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Wet_Mangrove_Mud.png");
-            if (wetMudTex == null) wetMudTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Mangrove_Mud_Surface_Albedo.png");
-            if (wetMudTex != null)
+            if (intertidalMat == null)
             {
-                mudWestMat.SetTexture("_BaseMap", wetMudTex);
-                mudWestMat.SetTextureScale("_BaseMap", new Vector2(10f, 14f));
+                intertidalMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Mangrove_Intertidal_Mud.mat");
+                if (intertidalMat == null)
+                {
+                    intertidalMat = new Material(urpLit);
+                    AssetDatabase.CreateAsset(intertidalMat, "Assets/Materials/Mangrove_Intertidal_Mud.mat");
+                }
+                intertidalMat.shader = urpLit;
+                intertidalMat.SetColor("_BaseColor", new Color(1.0f, 0.98f, 0.94f, 1.0f));
+                intertidalMat.SetFloat("_Smoothness", 0.30f);
+                intertidalMat.SetFloat("_Metallic", 0.0f);
+                var interBaseTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/MangroveMud_BaseMap.png");
+                if (interBaseTex != null)
+                {
+                    intertidalMat.SetTexture("_BaseMap", interBaseTex);
+                    intertidalMat.SetTextureScale("_BaseMap", new Vector2(1f, 1f));
+                }
+                var interNormTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/MangroveMud_NormalMap.png");
+                if (interNormTex != null)
+                {
+                    intertidalMat.SetTexture("_BumpMap", interNormTex);
+                    intertidalMat.SetFloat("_BumpScale", 1.5f);
+                    intertidalMat.SetTextureScale("_BumpMap", new Vector2(2.6f, 2.6f));
+                    intertidalMat.EnableKeyword("_NORMALMAP");
+                }
+                intertidalMat.enableInstancing = true;
+                EditorUtility.SetDirty(intertidalMat);
             }
-            var mudNormTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Mangrove_Mud_Surface_Normal.png");
-            if (mudNormTex != null)
-            {
-                mudWestMat.SetTexture("_BumpMap", mudNormTex);
-                mudWestMat.SetFloat("_BumpScale", 1.2f);
-                mudWestMat.SetTextureScale("_BumpMap", new Vector2(10f, 14f));
-                mudWestMat.EnableKeyword("_NORMALMAP");
-            }
-            EditorUtility.SetDirty(mudWestMat);
-            mats["mud_west"] = mudWestMat;
 
-            // East Bank Mud: Warm alluvial clay & mangrove silt deposit (crumbly, earthy, semi-matte)
-            var mudEastMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/EastBank_Mud.mat");
-            if (mudEastMat == null)
-            {
-                mudEastMat = new Material(urpLit);
-                AssetDatabase.CreateAsset(mudEastMat, "Assets/Materials/EastBank_Mud.mat");
-            }
-            mudEastMat.SetColor("_BaseColor", new Color(0.38f, 0.28f, 0.18f));
-            mudEastMat.SetFloat("_Smoothness", 0.42f);
-            mudEastMat.SetFloat("_Metallic", 0.01f);
-            var eastDiffTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/PBR_Mud/brown_mud_diff_1k.jpg");
-            if (eastDiffTex != null)
-            {
-                mudEastMat.SetTexture("_BaseMap", eastDiffTex);
-                mudEastMat.SetTextureScale("_BaseMap", new Vector2(8f, 12f));
-            }
-            var eastNormTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/PBR_Mud/brown_mud_nor_1k.jpg");
-            if (eastNormTex != null)
-            {
-                mudEastMat.SetTexture("_BumpMap", eastNormTex);
-                mudEastMat.SetFloat("_BumpScale", 0.9f);
-                mudEastMat.SetTextureScale("_BumpMap", new Vector2(8f, 12f));
-                mudEastMat.EnableKeyword("_NORMALMAP");
-            }
-            var eastAoTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/PBR_Mud/brown_mud_ao_1k.jpg");
-            if (eastAoTex != null)
-            {
-                mudEastMat.SetTexture("_OcclusionMap", eastAoTex);
-                mudEastMat.SetFloat("_OcclusionStrength", 0.85f);
-            }
-            EditorUtility.SetDirty(mudEastMat);
-            mats["mud_east"] = mudEastMat;
-
-            // Fallback Ground Mud
-            var mudMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Riverbank_Ground.mat");
-            if (mudMat == null)
-            {
-                mudMat = new Material(urpLit);
-                AssetDatabase.CreateAsset(mudMat, "Assets/Materials/Riverbank_Ground.mat");
-            }
-            mudMat.SetColor("_BaseColor", new Color(0.22f, 0.18f, 0.13f));
-            mudMat.SetFloat("_Smoothness", 0.65f);
-            mudMat.SetTextureScale("_BaseMap", new Vector2(6f, 10f));
-            if (mudMat.HasProperty("_BumpMap")) mudMat.SetTextureScale("_BumpMap", new Vector2(6f, 10f));
-            EditorUtility.SetDirty(mudMat);
-            mats["mud"] = mudMat;
+            // Unified surface: every ground surface in the world uses the authentic ripple mud material
+            mats["mud_intertidal"] = intertidalMat;
+            mats["mud_west"]       = intertidalMat;
+            mats["mud_east"]       = intertidalMat;
+            mats["beach_sand"]     = intertidalMat;
+            mats["mud"]            = intertidalMat;
 
             // River Bed
             var bedMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Sundarban_RiverBed.mat");
@@ -363,9 +377,9 @@ namespace SundarbanGuardian.Editor
             }
             mtnMat.SetColor("_BaseColor", new Color(0.24f, 0.30f, 0.22f));
             mtnMat.SetFloat("_Smoothness", 0.18f);
-            if (mudMat.mainTexture != null)
+            if (intertidalMat != null && intertidalMat.mainTexture != null)
             {
-                mtnMat.SetTexture("_BaseMap", mudMat.mainTexture);
+                mtnMat.SetTexture("_BaseMap", intertidalMat.mainTexture);
                 mtnMat.SetTextureScale("_BaseMap", new Vector2(8f, 8f));
             }
             EditorUtility.SetDirty(mtnMat);
@@ -531,23 +545,25 @@ namespace SundarbanGuardian.Editor
 
         private static void BuildBankLand(Transform parent, Dictionary<string, Material> mats)
         {
+            var intertidalMat = mats.ContainsKey("mud_intertidal") ? mats["mud_intertidal"] : mats["mud_west"];
+
             var westGO = new GameObject("West_Riverbank_Land");
             westGO.transform.SetParent(parent, false);
             westGO.AddComponent<MeshFilter>().sharedMesh = BuildBankMesh(true);
-            westGO.AddComponent<MeshRenderer>().sharedMaterial = mats["mud_west"];
+            westGO.AddComponent<MeshRenderer>().sharedMaterial = intertidalMat;
             westGO.AddComponent<MeshCollider>();
 
             var eastGO = new GameObject("East_Riverbank_Land");
             eastGO.transform.SetParent(parent, false);
             eastGO.AddComponent<MeshFilter>().sharedMesh = BuildBankMesh(false);
-            eastGO.AddComponent<MeshRenderer>().sharedMaterial = mats["mud_east"];
+            eastGO.AddComponent<MeshRenderer>().sharedMaterial = intertidalMat;
             eastGO.AddComponent<MeshCollider>();
         }
 
         private static Mesh BuildBankMesh(bool isWest)
         {
-            const float zStep = 2.5f;
-            const int uSegs = 20;
+            const float zStep = 2.0f;
+            const int uSegs = 28;
             int zCount = Mathf.CeilToInt((MapZMax - MapZMin) / zStep) + 1;
             int w = uSegs + 1;
 
@@ -567,10 +583,18 @@ namespace SundarbanGuardian.Editor
                 {
                     float u = (float)ui / uSegs;
                     float x = isWest ? Mathf.Lerp(outerX, beachInlandX, u) : Mathf.Lerp(beachInlandX, outerX, u);
-                    float y = BankY + 0.08f;
+
+                    // Solid elevated land: starts at 0.48m at river crest, gently undulates up to 0.76m inland
+                    float tInland = isWest ? (1f - u) : u; // 0 at shoreline, 1 at far boundary
+                    float baseHeight = Mathf.Lerp(0.48f, 0.76f, Mathf.Sqrt(Mathf.Clamp01(tInland)));
+
+                    // 3D mud ripple micro-relief matching normal map
+                    float rip1 = Mathf.Sin(x * 0.35f + z * 0.28f) * 0.042f;
+                    float rip2 = Mathf.Cos(x * 0.18f - z * 0.45f) * 0.030f;
+                    float y = baseHeight + rip1 + rip2;
 
                     verts.Add(new Vector3(x, y, z));
-                    uvs.Add(new Vector2((x - MapXMin) * 0.08f, (z - MapZMin) * 0.08f));
+                    uvs.Add(new Vector2(x * 0.35f, z * 0.35f));
                 }
             }
 
@@ -596,16 +620,18 @@ namespace SundarbanGuardian.Editor
 
         private static void BuildSeaBeachShorelines(Transform parent, Dictionary<string, Material> mats)
         {
+            var intertidalMat = mats.ContainsKey("mud_intertidal") ? mats["mud_intertidal"] : mats["beach_sand"];
+
             var westBeach = new GameObject("West_Sea_Beach_Surface");
             westBeach.transform.SetParent(parent, false);
             westBeach.AddComponent<MeshFilter>().sharedMesh = BuildBeachMesh(true);
-            westBeach.AddComponent<MeshRenderer>().sharedMaterial = mats["beach_sand"];
+            westBeach.AddComponent<MeshRenderer>().sharedMaterial = intertidalMat;
             westBeach.AddComponent<MeshCollider>();
 
             var eastBeach = new GameObject("East_Sea_Beach_Surface");
             eastBeach.transform.SetParent(parent, false);
             eastBeach.AddComponent<MeshFilter>().sharedMesh = BuildBeachMesh(false);
-            eastBeach.AddComponent<MeshRenderer>().sharedMaterial = mats["beach_sand"];
+            eastBeach.AddComponent<MeshRenderer>().sharedMaterial = intertidalMat;
             eastBeach.AddComponent<MeshCollider>();
         }
 
@@ -626,8 +652,7 @@ namespace SundarbanGuardian.Editor
                 float riverEdgeX   = isWest ? (RiverCenterX(z) - RiverHalfWidth(z)) : (RiverCenterX(z) + RiverHalfWidth(z));
                 float beachW       = BeachWidth(z);
                 float beachInlandX = isWest ? (riverEdgeX - beachW) : (riverEdgeX + beachW);
-                float shelfEdgeX   = isWest ? (riverEdgeX + 4.5f)   : (riverEdgeX - 4.5f);
-                float beachBermX   = isWest ? (riverEdgeX - beachW * 0.40f) : (riverEdgeX + beachW * 0.40f);
+                float shelfEdgeX   = isWest ? (riverEdgeX + 3.0f)   : (riverEdgeX - 3.0f);
 
                 for (int ui = 0; ui <= uSegs; ui++)
                 {
@@ -636,57 +661,40 @@ namespace SundarbanGuardian.Editor
 
                     if (isWest)
                     {
-                        // West Beach: ui goes from 0 (beachInlandX at 0.08m) to 24 (shelfEdgeX submerged in river)
-                        if (u < 0.40f)
+                        // West Beach: u=0 at beachInlandX (crest 0.48m), u=0.8 at waterline (0.04m), u=1 at submerged shelf (-0.25m)
+                        if (u <= 0.80f)
                         {
-                            // Upper dry sand berm: 0.08m down to 0.062m
-                            float tBerm = u / 0.40f;
-                            x = Mathf.Lerp(beachInlandX, beachBermX, tBerm);
-                            y = Mathf.Lerp(BankY + 0.08f, BankY + 0.062f, tBerm);
-                        }
-                        else if (u < 0.80f)
-                        {
-                            // Intertidal swash slope: 0.062m down to WaterY (0.04m)
-                            float tSlope = (u - 0.40f) / (0.80f - 0.40f);
-                            x = Mathf.Lerp(beachBermX, riverEdgeX, tSlope);
-                            y = Mathf.Lerp(BankY + 0.062f, WaterY, 0.5f - 0.5f * Mathf.Cos(tSlope * Mathf.PI));
+                            float tSlope = u / 0.80f;
+                            x = Mathf.Lerp(beachInlandX, riverEdgeX, tSlope);
+                            y = Mathf.Lerp(0.48f, WaterY, 0.5f - 0.5f * Mathf.Cos(tSlope * Mathf.PI));
                         }
                         else
                         {
-                            // Submerged sand bar / surf shelf: 0.04m down to -0.22m under water
-                            float tShelf = (u - 0.80f) / (1.0f - 0.80f);
+                            float tShelf = (u - 0.80f) / 0.20f;
                             x = Mathf.Lerp(riverEdgeX, shelfEdgeX, tShelf);
-                            y = Mathf.Lerp(WaterY, -0.22f, tShelf);
+                            y = Mathf.Lerp(WaterY, -0.25f, tShelf);
                         }
                     }
                     else
                     {
-                        // East Beach: ui goes from 0 (shelfEdgeX submerged in river) to 24 (beachInlandX at 0.08m)
-                        if (u < 0.20f)
+                        // East Beach: u=0 at submerged shelf (-0.25m), u=0.20 at waterline (0.04m), u=1 at beachInlandX (crest 0.48m)
+                        if (u <= 0.20f)
                         {
-                            // Submerged shelf: -0.22m up to WaterY (0.04m)
                             float tShelf = u / 0.20f;
                             x = Mathf.Lerp(shelfEdgeX, riverEdgeX, tShelf);
-                            y = Mathf.Lerp(-0.22f, WaterY, tShelf);
-                        }
-                        else if (u < 0.60f)
-                        {
-                            // Intertidal swash slope: WaterY up to 0.062m
-                            float tSlope = (u - 0.20f) / (0.60f - 0.20f);
-                            x = Mathf.Lerp(riverEdgeX, beachBermX, tSlope);
-                            y = Mathf.Lerp(WaterY, BankY + 0.062f, 0.5f - 0.5f * Mathf.Cos(tSlope * Mathf.PI));
+                            y = Mathf.Lerp(-0.25f, WaterY, tShelf);
                         }
                         else
                         {
-                            // Dry sand berm: 0.062m up to inland bank (0.08m)
-                            float tBerm = (u - 0.60f) / (1.0f - 0.60f);
-                            x = Mathf.Lerp(beachBermX, beachInlandX, tBerm);
-                            y = Mathf.Lerp(BankY + 0.062f, BankY + 0.08f, tBerm);
+                            float tSlope = (u - 0.20f) / 0.80f;
+                            x = Mathf.Lerp(riverEdgeX, beachInlandX, tSlope);
+                            y = Mathf.Lerp(WaterY, 0.48f, 0.5f - 0.5f * Mathf.Cos(tSlope * Mathf.PI));
                         }
                     }
 
-                    verts.Add(new Vector3(x, y, z));
-                    uvs.Add(new Vector2((x - MapXMin) * 0.12f, (z - MapZMin) * 0.12f));
+                    float rip = Mathf.Sin(x * 0.35f + z * 0.28f) * 0.02f;
+                    verts.Add(new Vector3(x, y + rip, z));
+                    uvs.Add(new Vector2(x * 0.35f, z * 0.35f));
                 }
             }
 
@@ -1071,16 +1079,15 @@ namespace SundarbanGuardian.Editor
 
         private static void PlantForest(Transform parent, Dictionary<string, GameObject> prefabs, Dictionary<string, Material> mats)
         {
-            // Living trees pool - ONLY Quaternius trees & Low-poly palms (NO puffy lime-green NormalTrees!)
+            // Living trees pool - ONLY authentic Sundarban mangrove species & tropical coastal palms
             var livingTrees = new List<(string name, GameObject prefab, float weight)>();
-            if (prefabs.ContainsKey("Tree_New_CommonTree"))             livingTrees.Add(("Tree_New_CommonTree",             prefabs["Tree_New_CommonTree"],             25f));
-            if (prefabs.ContainsKey("Tree_New_Pine"))                   livingTrees.Add(("Tree_New_Pine",                   prefabs["Tree_New_Pine"],                   18f));
-            if (prefabs.ContainsKey("Tree_New_Maple_1"))                livingTrees.Add(("Tree_New_Maple_1",                prefabs["Tree_New_Maple_1"],                15f));
-            if (prefabs.ContainsKey("Tree_New_Maple_2"))                livingTrees.Add(("Tree_New_Maple_2",                prefabs["Tree_New_Maple_2"],                15f));
-            if (prefabs.ContainsKey("Tree_New_Maple_3"))                livingTrees.Add(("Tree_New_Maple_3",                prefabs["Tree_New_Maple_3"],                10f));
-            if (prefabs.ContainsKey("Tree_Lightweight_CoconutPalm"))    livingTrees.Add(("Tree_Lightweight_CoconutPalm",    prefabs["Tree_Lightweight_CoconutPalm"],    25f));
-            if (prefabs.ContainsKey("Tree_Lightweight_EvergladesPalm")) livingTrees.Add(("Tree_Lightweight_EvergladesPalm", prefabs["Tree_Lightweight_EvergladesPalm"], 20f));
-            if (prefabs.ContainsKey("Tree_Lightweight_TrianglePalm"))   livingTrees.Add(("Tree_Lightweight_TrianglePalm",   prefabs["Tree_Lightweight_TrianglePalm"],   15f));
+            if (prefabs.ContainsKey("Tree_Stilt_Mangrove_LOD1"))        livingTrees.Add(("Tree_Stilt_Mangrove_LOD1",        prefabs["Tree_Stilt_Mangrove_LOD1"],        35f));
+            if (prefabs.ContainsKey("Tree_Stilt_Mangrove_Tall_LOD1"))   livingTrees.Add(("Tree_Stilt_Mangrove_Tall_LOD1",   prefabs["Tree_Stilt_Mangrove_Tall_LOD1"],   25f));
+            if (prefabs.ContainsKey("Tree_Mangrove_Canopy_LOD1"))       livingTrees.Add(("Tree_Mangrove_Canopy_LOD1",       prefabs["Tree_Mangrove_Canopy_LOD1"],       30f));
+            if (prefabs.ContainsKey("Tree_Mangrove_Bush_LOD1"))         livingTrees.Add(("Tree_Mangrove_Bush_LOD1",         prefabs["Tree_Mangrove_Bush_LOD1"],         20f));
+            if (prefabs.ContainsKey("Tree_LowPoly_Mangrove_Stilt"))     livingTrees.Add(("Tree_LowPoly_Mangrove_Stilt",     prefabs["Tree_LowPoly_Mangrove_Stilt"],     20f));
+            if (prefabs.ContainsKey("Tree_Lightweight_CoconutPalm"))    livingTrees.Add(("Tree_Lightweight_CoconutPalm",    prefabs["Tree_Lightweight_CoconutPalm"],    15f));
+            if (prefabs.ContainsKey("Tree_Lightweight_EvergladesPalm")) livingTrees.Add(("Tree_Lightweight_EvergladesPalm", prefabs["Tree_Lightweight_EvergladesPalm"], 15f));
 
             if (livingTrees.Count == 0) return;
 
@@ -1103,7 +1110,7 @@ namespace SundarbanGuardian.Editor
 
             // Player position & safe clearance
             var tiger = GameObject.Find("Tiger");
-            Vector3 playerPos = tiger != null ? tiger.transform.position : new Vector3(-120f, 0.08f, 30f);
+            Vector3 playerPos = tiger != null ? tiger.transform.position : new Vector3(-45f, 0.48f, 30f);
 
             int plantedLiving = 0;
             var forestGroup = new GameObject("Inland_Trees").transform;
@@ -1158,19 +1165,19 @@ namespace SundarbanGuardian.Editor
                         continue; // Do NOT plant green trees in or near hazard zones!
                     }
 
-                    // Plant Lush New Dec Tree in the normal forest
+                    // Plant authentic mangrove tree on the elevated mud ground
                     var prefab = pickLivingTree();
-                    float scale = Random.Range(0.85f, 1.15f);
+                    float scale = Random.Range(0.88f, 1.25f);
                     var rot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
                     var treeInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab, forestGroup);
                     treeInst.name = $"{prefab.name}_{plantedLiving++}";
-                    treeInst.transform.position = new Vector3(jx, BankY, jz);
+                    treeInst.transform.position = new Vector3(jx, GetGroundY(jx, jz), jz);
                     treeInst.transform.rotation = rot;
                     treeInst.transform.localScale = Vector3.one * scale;
                 }
             }
-            Debug.Log($"[BuildSundarbanFullMap] Planted {plantedLiving} living trees in clean forest.");
+            Debug.Log($"[BuildSundarbanFullMap] Planted {plantedLiving} authentic mangrove trees in clean forest.");
 
             // 2. EXPANDED HAZARD ZONES: Plant Fall Trees and Dead Trees in desolate danger zones
             int plantedDangerTrees = 0;
@@ -1195,7 +1202,7 @@ namespace SundarbanGuardian.Editor
 
                     var treeInst = (GameObject)PrefabUtility.InstantiatePrefab(fallTreePrefab, hazardGroup);
                     treeInst.name = $"Hazard_FallTree_{plantedDangerTrees++}";
-                    treeInst.transform.position = new Vector3(fx, BankY, fz);
+                    treeInst.transform.position = new Vector3(fx, GetGroundY(fx, fz), fz);
                     treeInst.transform.rotation = rot;
                     treeInst.transform.localScale = Vector3.one * scale;
                 }
@@ -1218,24 +1225,28 @@ namespace SundarbanGuardian.Editor
 
                     var treeInst = (GameObject)PrefabUtility.InstantiatePrefab(deadTreePrefab, hazardGroup);
                     treeInst.name = $"Hazard_DeadTree_{plantedDangerTrees++}";
-                    treeInst.transform.position = new Vector3(dx, BankY, dz);
+                    treeInst.transform.position = new Vector3(dx, GetGroundY(dx, dz), dz);
                     treeInst.transform.rotation = rot;
                     treeInst.transform.localScale = Vector3.one * scale;
                 }
             }
             Debug.Log($"[BuildSundarbanFullMap] Planted {plantedDangerTrees} danger zone trees (Fall Trees & Dead Trees) inside expanded hazard zones.");
 
-            // 3. Dense Mangrove Riverbank Forest (Low-poly stilt root mangroves, overhanging canopies, and palms)
+            // 3. Dense Mangrove Riverbank Forest (Authentic Stilt-Root Mangroves, Overhanging Canopies, and Palms)
             var bankGroup = new GameObject("Dense_Riverbank_Mangrove_Canopy").transform;
             bankGroup.SetParent(parent, false);
             int bankCount = 0;
 
-            GameObject stiltMangrovePrefab = prefabs.ContainsKey("Tree_LowPoly_Mangrove_Stilt") ? prefabs["Tree_LowPoly_Mangrove_Stilt"] : null;
+            GameObject stiltMangrovePrefab = prefabs.ContainsKey("Tree_Stilt_Mangrove_LOD1") ? prefabs["Tree_Stilt_Mangrove_LOD1"] 
+                : (prefabs.ContainsKey("Tree_LowPoly_Mangrove_Stilt") ? prefabs["Tree_LowPoly_Mangrove_Stilt"] : null);
+            GameObject stiltTallPrefab = prefabs.ContainsKey("Tree_Stilt_Mangrove_Tall_LOD1") ? prefabs["Tree_Stilt_Mangrove_Tall_LOD1"] : stiltMangrovePrefab;
+            GameObject canopyMangrovePrefab = prefabs.ContainsKey("Tree_Mangrove_Canopy_LOD1") ? prefabs["Tree_Mangrove_Canopy_LOD1"] : null;
+            GameObject bushMangrovePrefab = prefabs.ContainsKey("Tree_Mangrove_Bush_LOD1") ? prefabs["Tree_Mangrove_Bush_LOD1"] : null;
             GameObject overhangingMangrovePrefab = prefabs.ContainsKey("Tree_LowPoly_Mangrove_Overhanging") ? prefabs["Tree_LowPoly_Mangrove_Overhanging"] : null;
             GameObject coconutPalmPrefab = prefabs.ContainsKey("Tree_Lightweight_CoconutPalm") ? prefabs["Tree_Lightweight_CoconutPalm"] : null;
             GameObject evergladesPalmPrefab = prefabs.ContainsKey("Tree_Lightweight_EvergladesPalm") ? prefabs["Tree_Lightweight_EvergladesPalm"] : null;
 
-            for (float z = MapZMin + 6f; z <= MapZMax - 6f; z += 3.6f)
+            for (float z = MapZMin + 6f; z <= MapZMax - 6f; z += 3.2f)
             {
                 float cx = RiverCenterX(z);
                 float hw = RiverHalfWidth(z);
@@ -1246,75 +1257,60 @@ namespace SundarbanGuardian.Editor
                     float prevCx = RiverCenterX(z - 2.5f);
                     float nextCx = RiverCenterX(z + 2.5f);
                     float curvature = Mathf.Abs(nextCx - 2f * cx + prevCx);
-                    bool isSharpBend = curvature > 0.12f;
+                    bool isSharpBend = curvature > 0.10f;
 
-                    // ── Row 1: Waterline Overhanging Stilt Mangroves (clusters at bends, leaving open sandy beaches) ──
-                    if (isSharpBend || Random.value < 0.45f)
+                    // ── Row 1: Waterline Stilt Mangroves (prop roots resting on mud slope) ──
+                    if (isSharpBend || Random.value < 0.55f)
                     {
-                        float px1 = cx + side * (hw + Random.Range(0.4f, 1.8f));
+                        float px1 = cx + side * (hw + Random.Range(0.6f, 2.4f));
                         if (px1 >= MapXMin + 4f && px1 <= MapXMax - 4f)
                         {
                             float dSq = (px1 - playerPos.x) * (px1 - playerPos.x) + (z - playerPos.z) * (z - playerPos.z);
-                            if (dSq >= 8.0f * 8.0f && !IsInHazardZone(px1, z, buffer: 3.5f))
+                            if (dSq >= 7.0f * 7.0f && !IsInHazardZone(px1, z, buffer: 3.5f))
                             {
-                                GameObject prefab1 = (isSharpBend || Random.value < 0.65f) && overhangingMangrovePrefab != null
-                                    ? overhangingMangrovePrefab
-                                    : (stiltMangrovePrefab != null ? stiltMangrovePrefab : pickLivingTree());
+                                GameObject prefab1 = (Random.value < 0.60f && stiltMangrovePrefab != null) ? stiltMangrovePrefab 
+                                    : (stiltTallPrefab != null ? stiltTallPrefab : pickLivingTree());
 
-                            // Face towards the river with natural subtle tilt
-                            float rotY = (side == -1) ? Random.Range(70f, 110f) : Random.Range(250f, 290f);
-                            float tiltX = Random.Range(-4f, 4f);
-                            float tiltZ = -side * Random.Range(2f, 7f);
-                            var rot1 = Quaternion.Euler(tiltX, rotY, tiltZ);
-                            float scale1 = Random.Range(1.15f, 1.50f);
+                                float rotY = (side == -1) ? Random.Range(60f, 120f) : Random.Range(240f, 300f);
+                                float tiltX = Random.Range(-3f, 3f);
+                                float tiltZ = -side * Random.Range(3f, 8f);
+                                var rot1 = Quaternion.Euler(tiltX, rotY, tiltZ);
+                                float scale1 = Random.Range(1.10f, 1.45f);
 
-                            var tree1 = (GameObject)PrefabUtility.InstantiatePrefab(prefab1, bankGroup);
-                            tree1.name = $"Mangrove_Row1_{bankCount++}";
-                            // Roots sunk firmly into mud slope
-                            tree1.transform.position = new Vector3(px1, BankY - 0.05f, z + Random.Range(-0.6f, 0.6f));
-                            tree1.transform.rotation = rot1;
-                            tree1.transform.localScale = Vector3.one * scale1;
-
-                            // Extra arching tree at sharp bends to create continuous overhanging green canopy tunnel
-                            if (isSharpBend && overhangingMangrovePrefab != null && Random.value < 0.65f)
-                            {
-                                float pxArch = cx + side * (hw - Random.Range(0.2f, 0.6f));
-                                var archTree = (GameObject)PrefabUtility.InstantiatePrefab(overhangingMangrovePrefab, bankGroup);
-                                archTree.name = $"Mangrove_Bend_Arch_{bankCount++}";
-                                archTree.transform.position = new Vector3(pxArch, WaterY - 0.02f, z + Random.Range(-1.0f, 1.0f));
-                                archTree.transform.rotation = Quaternion.Euler(Random.Range(-4f, 4f), rotY + Random.Range(-10f, 10f), tiltZ * 1.1f);
-                                archTree.transform.localScale = Vector3.one * Random.Range(1.20f, 1.55f);
+                                var tree1 = (GameObject)PrefabUtility.InstantiatePrefab(prefab1, bankGroup);
+                                tree1.name = $"Mangrove_Stilt_{bankCount++}";
+                                float gy1 = GetGroundY(px1, z);
+                                tree1.transform.position = new Vector3(px1, gy1 - 0.04f, z + Random.Range(-0.5f, 0.5f));
+                                tree1.transform.rotation = rot1;
+                                tree1.transform.localScale = Vector3.one * scale1;
                             }
                         }
                     }
-                }
 
-                    // ── Row 2: Bank Crest Stilt Roots & Mangrove Wall (forming unbroken canopy) ──
-                    if (Random.value < 0.75f)
+                    // ── Row 2: Bank Crest Stilt Roots & Mangrove Canopy Wall ──
+                    if (Random.value < 0.80f)
                     {
-                        float px2 = cx + side * (hw + Random.Range(3.2f, 6.2f));
+                        float px2 = cx + side * (hw + BeachWidth(z) + Random.Range(1.5f, 5.0f));
                         if (px2 >= MapXMin + 4f && px2 <= MapXMax - 4f)
                         {
                             float dSq2 = (px2 - playerPos.x) * (px2 - playerPos.x) + (z - playerPos.z) * (z - playerPos.z);
-                            if (dSq2 >= 8.0f * 8.0f && !IsInHazardZone(px2, z, buffer: 3.5f))
+                            if (dSq2 >= 7.0f * 7.0f && !IsInHazardZone(px2, z, buffer: 3.5f))
                             {
                                 GameObject prefab2;
                                 float roll = Random.value;
-                                if (roll < 0.45f && stiltMangrovePrefab != null)
-                                    prefab2 = stiltMangrovePrefab;
-                                else if (roll < 0.70f && coconutPalmPrefab != null)
-                                    prefab2 = coconutPalmPrefab;
-                                else if (roll < 0.85f && evergladesPalmPrefab != null)
-                                    prefab2 = evergladesPalmPrefab;
-                                else
-                                    prefab2 = pickLivingTree();
+                                if (roll < 0.35f && stiltTallPrefab != null) prefab2 = stiltTallPrefab;
+                                else if (roll < 0.55f && canopyMangrovePrefab != null) prefab2 = canopyMangrovePrefab;
+                                else if (roll < 0.72f && coconutPalmPrefab != null) prefab2 = coconutPalmPrefab;
+                                else if (roll < 0.85f && bushMangrovePrefab != null) prefab2 = bushMangrovePrefab;
+                                else prefab2 = pickLivingTree();
 
-                                float scale2 = Random.Range(0.90f, 1.25f);
-                                var rot2 = Quaternion.Euler(Random.Range(-4f, 4f), Random.Range(0f, 360f), -side * Random.Range(4f, 12f));
+                                float scale2 = Random.Range(0.95f, 1.30f);
+                                var rot2 = Quaternion.Euler(Random.Range(-3f, 3f), Random.Range(0f, 360f), -side * Random.Range(2f, 8f));
 
                                 var tree2 = (GameObject)PrefabUtility.InstantiatePrefab(prefab2, bankGroup);
-                                tree2.name = $"Mangrove_Row2_{bankCount++}";
-                                tree2.transform.position = new Vector3(px2, BankY + 0.05f, z + Random.Range(-1.0f, 1.0f));
+                                tree2.name = $"Mangrove_Bank_{bankCount++}";
+                                float gy2 = GetGroundY(px2, z);
+                                tree2.transform.position = new Vector3(px2, gy2, z + Random.Range(-0.8f, 0.8f));
                                 tree2.transform.rotation = rot2;
                                 tree2.transform.localScale = Vector3.one * scale2;
                             }
@@ -1322,22 +1318,177 @@ namespace SundarbanGuardian.Editor
                     }
                 }
             }
-            Debug.Log($"[BuildSundarbanFullMap] Planted {bankCount} dense low-poly mangrove trees and riverbank canopy trees flanking the meandering river!");
+            Debug.Log($"[BuildSundarbanFullMap] Planted {bankCount} authentic stilt-root mangroves along the riverbanks!");
 
-            // 4. LUSH GREENERY & GRASS CARPETS: Make the sanctuary green, NEVER in hazard zones!
+            // 4. AUTHENTIC MANGROVE MUD SURFACE UNDERGROWTH: Ferns, Pneumatophores, Seedlings, Driftwood Logs, & Grass
             var detailGroup = new GameObject("Lush_Greenery_and_Grass").transform;
             detailGroup.SetParent(parent, false);
 
+            GameObject fernPrefab = prefabs.ContainsKey("Detail_Mangrove_Fern") ? prefabs["Detail_Mangrove_Fern"] : null;
+            GameObject pneumatophorePrefab = prefabs.ContainsKey("Detail_Mangrove_Pneumatophore") ? prefabs["Detail_Mangrove_Pneumatophore"] : null;
+            GameObject seedlingPrefab = prefabs.ContainsKey("Detail_Mangrove_Seedling") ? prefabs["Detail_Mangrove_Seedling"] : null;
+            GameObject logPrefab = prefabs.ContainsKey("Detail_Mangrove_FallenLog") ? prefabs["Detail_Mangrove_FallenLog"] 
+                : (prefabs.ContainsKey("Detail_Fallen_MangroveLog") ? prefabs["Detail_Fallen_MangroveLog"] : null);
             GameObject grassPatchPrefab = prefabs.ContainsKey("GrassPatch") ? prefabs["GrassPatch"] : null;
-            GameObject mangroveGrassPrefab = prefabs.ContainsKey("Detail_Mangrove_Grass") ? prefabs["Detail_Mangrove_Grass"] : null;
-            GameObject logPrefab = prefabs.ContainsKey("Detail_Fallen_MangroveLog") ? prefabs["Detail_Fallen_MangroveLog"] : null;
 
+            int fernCount = 0;
+            int pneumatoCount = 0;
+            int seedlingCount = 0;
             int grassPatchCount = 0;
-            int tuftCount = 0;
             int logCount = 0;
 
-            // A. Kotka Wildlife Sanctuary Grass Glade (around Chitra Deer start zone: 85, 48)
-            // Dense, lush green savannah / glade for the deer!
+            // A. Intertidal Mud Flat & Shoreline Undergrowth (Dense along both riverbanks)
+            for (float z = MapZMin + 5f; z <= MapZMax - 5f; z += 3.5f)
+            {
+                float rxC = RiverCenterX(z);
+                float rhw = RiverHalfWidth(z);
+                float beachW = BeachWidth(z);
+
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    // 1. Waterline & Shoreline Pneumatophores (pencil roots sticking up from wet silt)
+                    if (pneumatophorePrefab != null && Random.value < 0.75f)
+                    {
+                        int pNum = Random.Range(4, 9);
+                        for (int pi = 0; pi < pNum; pi++)
+                        {
+                            float px = rxC + side * (rhw + Random.Range(0.6f, beachW + 5.0f));
+                            float pz = z + Random.Range(-1.8f, 1.8f);
+                            if (IsInHazardZone(px, pz, buffer: 3.0f)) continue;
+
+                            var pRoot = (GameObject)PrefabUtility.InstantiatePrefab(pneumatophorePrefab, detailGroup);
+                            pRoot.name = $"Pneumatophore_{pneumatoCount++}";
+                            float gy = GetGroundY(px, pz);
+                            pRoot.transform.position = new Vector3(px, gy, pz);
+                            pRoot.transform.rotation = Quaternion.Euler(Random.Range(-5f, 5f), Random.Range(0f, 360f), Random.Range(-5f, 5f));
+                            pRoot.transform.localScale = Vector3.one * Random.Range(0.85f, 1.45f);
+                        }
+                    }
+
+                    // 2. Mangrove Ferns on the mud banks (matching reference screenshot)
+                    if (fernPrefab != null && Random.value < 0.75f)
+                    {
+                        float fx = rxC + side * (rhw + Random.Range(1.2f, beachW + 16.0f));
+                        float fz = z + Random.Range(-1.5f, 1.5f);
+                        float dSq = (fx - playerPos.x) * (fx - playerPos.x) + (fz - playerPos.z) * (fz - playerPos.z);
+                        if (dSq >= 4.0f * 4.0f && !IsInHazardZone(fx, fz, buffer: 3.5f))
+                        {
+                            var fern = (GameObject)PrefabUtility.InstantiatePrefab(fernPrefab, detailGroup);
+                            fern.name = $"Mangrove_Fern_{fernCount++}";
+                            float gy = GetGroundY(fx, fz);
+                            fern.transform.position = new Vector3(fx, gy, fz);
+                            fern.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                            fern.transform.localScale = Vector3.one * Random.Range(0.95f, 1.50f);
+                        }
+                    }
+
+                    // 3. Mangrove Seedlings
+                    if (seedlingPrefab != null && Random.value < 0.50f)
+                    {
+                        float sx = rxC + side * (rhw + Random.Range(0.5f, beachW + 10.0f));
+                        float sz = z + Random.Range(-1.5f, 1.5f);
+                        if (!IsInHazardZone(sx, sz, buffer: 3.0f))
+                        {
+                            var seedling = (GameObject)PrefabUtility.InstantiatePrefab(seedlingPrefab, detailGroup);
+                            seedling.name = $"Seedling_{seedlingCount++}";
+                            float gy = GetGroundY(sx, sz);
+                            seedling.transform.position = new Vector3(sx, gy, sz);
+                            seedling.transform.rotation = Quaternion.Euler(Random.Range(-4f, 4f), Random.Range(0f, 360f), Random.Range(-4f, 4f));
+                            seedling.transform.localScale = Vector3.one * Random.Range(0.80f, 1.30f);
+                        }
+                    }
+
+                    // 4. Washed-up Driftwood logs
+                    if (logPrefab != null && Random.value < 0.28f)
+                    {
+                        float lx = rxC + side * (rhw + Random.Range(1.8f, beachW + 12.0f));
+                        float lz = z + Random.Range(-1.5f, 1.5f);
+                        if (!IsInHazardZone(lx, lz, buffer: 3.5f))
+                        {
+                            var log = (GameObject)PrefabUtility.InstantiatePrefab(logPrefab, detailGroup);
+                            log.name = $"FallenLog_{logCount++}";
+                            float gy = GetGroundY(lx, lz);
+                            log.transform.position = new Vector3(lx, gy, lz);
+                            log.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                            log.transform.localScale = Vector3.one * Random.Range(0.40f, 0.75f);
+                        }
+                    }
+                }
+            }
+
+            // B. Inland Forest Floor Undergrowth across the ENTIRE MAP (matching reference image everywhere!)
+            const float inlandStep = 5.5f;
+            for (float iz = MapZMin + 8f; iz < MapZMax - 8f; iz += inlandStep)
+            {
+                float rxC = RiverCenterX(iz);
+                float rhw = RiverHalfWidth(iz);
+                float beachW = BeachWidth(iz);
+
+                for (float ix = MapXMin + 8f; ix < MapXMax - 8f; ix += inlandStep)
+                {
+                    float distRiver = Mathf.Abs(ix - rxC);
+                    // Skip if inside river channel or inner beach (handled by shoreline pass)
+                    if (distRiver < rhw + beachW) continue;
+                    if (IsInHazardZone(ix, iz, buffer: 3.5f)) continue;
+
+                    float jx = ix + Random.Range(-1.8f, 1.8f);
+                    float jz = iz + Random.Range(-1.8f, 1.8f);
+                    float distPlayerSq = (jx - playerPos.x) * (jx - playerPos.x) + (jz - playerPos.z) * (jz - playerPos.z);
+                    if (distPlayerSq < 4.0f * 4.0f) continue;
+
+                    // Ferns across the mud floor
+                    if (fernPrefab != null && Random.value < 0.55f)
+                    {
+                        var fern = (GameObject)PrefabUtility.InstantiatePrefab(fernPrefab, detailGroup);
+                        fern.name = $"Inland_Fern_{fernCount++}";
+                        float gy = GetGroundY(jx, jz);
+                        fern.transform.position = new Vector3(jx, gy, jz);
+                        fern.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                        fern.transform.localScale = Vector3.one * Random.Range(0.85f, 1.40f);
+                    }
+
+                    // Pencil roots cluster in the mud
+                    if (pneumatophorePrefab != null && Random.value < 0.60f)
+                    {
+                        int pNum = Random.Range(3, 7);
+                        for (int pi = 0; pi < pNum; pi++)
+                        {
+                            float px = jx + Random.Range(-1.2f, 1.2f);
+                            float pz = jz + Random.Range(-1.2f, 1.2f);
+                            var pRoot = (GameObject)PrefabUtility.InstantiatePrefab(pneumatophorePrefab, detailGroup);
+                            pRoot.name = $"Inland_Pneumatophore_{pneumatoCount++}";
+                            float gy = GetGroundY(px, pz);
+                            pRoot.transform.position = new Vector3(px, gy, pz);
+                            pRoot.transform.rotation = Quaternion.Euler(Random.Range(-5f, 5f), Random.Range(0f, 360f), Random.Range(-5f, 5f));
+                            pRoot.transform.localScale = Vector3.one * Random.Range(0.80f, 1.35f);
+                        }
+                    }
+
+                    // Seedlings
+                    if (seedlingPrefab != null && Random.value < 0.35f)
+                    {
+                        var seedling = (GameObject)PrefabUtility.InstantiatePrefab(seedlingPrefab, detailGroup);
+                        seedling.name = $"Inland_Seedling_{seedlingCount++}";
+                        float gy = GetGroundY(jx, jz);
+                        seedling.transform.position = new Vector3(jx, gy, jz);
+                        seedling.transform.rotation = Quaternion.Euler(Random.Range(-4f, 4f), Random.Range(0f, 360f), Random.Range(-4f, 4f));
+                        seedling.transform.localScale = Vector3.one * Random.Range(0.75f, 1.25f);
+                    }
+
+                    // Fallen driftwood logs
+                    if (logPrefab != null && Random.value < 0.12f)
+                    {
+                        var log = (GameObject)PrefabUtility.InstantiatePrefab(logPrefab, detailGroup);
+                        log.name = $"Inland_FallenLog_{logCount++}";
+                        float gy = GetGroundY(jx, jz);
+                        log.transform.position = new Vector3(jx, gy, jz);
+                        log.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                        log.transform.localScale = Vector3.one * Random.Range(0.40f, 0.70f);
+                    }
+                }
+            }
+
+            // B. Kotka Wildlife Sanctuary Grass Glade (around Chitra Deer start zone: 85, 48)
             float kotkaX = 85f, kotkaZ = 48f, kotkaR = 26f;
             for (int i = 0; i < 55; i++)
             {
@@ -1354,17 +1505,19 @@ namespace SundarbanGuardian.Editor
                 var rot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
                 float scale = Random.Range(0.85f, 1.35f);
 
-                if (grassPatchPrefab != null)
+                var foliagePrefab = fernPrefab != null ? fernPrefab : grassPatchPrefab;
+                if (foliagePrefab != null)
                 {
-                    var g = (GameObject)PrefabUtility.InstantiatePrefab(grassPatchPrefab, detailGroup);
-                    g.name = $"Kotka_GrassPatch_{grassPatchCount++}";
-                    g.transform.position = new Vector3(gx, BankY + 0.08f, gz);
+                    var g = (GameObject)PrefabUtility.InstantiatePrefab(foliagePrefab, detailGroup);
+                    g.name = $"Kotka_FernGlade_{fernCount++}";
+                    float gy = GetGroundY(gx, gz);
+                    g.transform.position = new Vector3(gx, gy, gz);
                     g.transform.rotation = rot;
                     g.transform.localScale = Vector3.one * scale;
                 }
             }
 
-            // B. Mandarbaria Grassland / Glade (around -40, 155)
+            // C. Mandarbaria Glade (around -40, 155)
             float mandX = -40f, mandZ = 155f, mandR = 24f;
             for (int i = 0; i < 40; i++)
             {
@@ -1381,17 +1534,19 @@ namespace SundarbanGuardian.Editor
                 var rot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
                 float scale = Random.Range(0.85f, 1.30f);
 
-                if (grassPatchPrefab != null)
+                var foliagePrefab = fernPrefab != null ? fernPrefab : grassPatchPrefab;
+                if (foliagePrefab != null)
                 {
-                    var g = (GameObject)PrefabUtility.InstantiatePrefab(grassPatchPrefab, detailGroup);
-                    g.name = $"Mandarbaria_GrassPatch_{grassPatchCount++}";
-                    g.transform.position = new Vector3(gx, BankY + 0.08f, gz);
+                    var g = (GameObject)PrefabUtility.InstantiatePrefab(foliagePrefab, detailGroup);
+                    g.name = $"Mandarbaria_FernGlade_{fernCount++}";
+                    float gy = GetGroundY(gx, gz);
+                    g.transform.position = new Vector3(gx, gy, gz);
                     g.transform.rotation = rot;
                     g.transform.localScale = Vector3.one * scale;
                 }
             }
 
-            // C. Inland Forest Floor Green Carpets (Scattered across the clean forest)
+            // D. Inland Forest Floor Green Carpets & Ferns
             const float grassGrid = 8.5f;
             for (float z = MapZMin + 12f; z < MapZMax - 12f; z += grassGrid)
             {
@@ -1425,61 +1580,47 @@ namespace SundarbanGuardian.Editor
                     }
                     if (onRoad) continue;
 
-                    // CRITICAL: NEVER PLANT GRASS IN DANGER ZONES!
-                    if (IsInHazardZone(gx, gz, buffer: 5.0f))
-                    {
-                        continue; // Keep danger zones completely barren, dry, and deforested!
-                    }
+                    // CRITICAL: NEVER PLANT IN DANGER ZONES!
+                    if (IsInHazardZone(gx, gz, buffer: 5.0f)) continue;
 
-                    // 35% probability per cell to plant a lush grass patch
                     float roll = Random.value;
-                    if (roll < 0.35f && grassPatchPrefab != null)
+                    if (roll < 0.35f && fernPrefab != null)
                     {
-                        var g = (GameObject)PrefabUtility.InstantiatePrefab(grassPatchPrefab, detailGroup);
-                        g.name = $"Forest_GrassPatch_{grassPatchCount++}";
-                        g.transform.position = new Vector3(gx, BankY + 0.08f, gz);
-                        g.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
-                        g.transform.localScale = Vector3.one * Random.Range(0.70f, 1.25f);
+                        var fern = (GameObject)PrefabUtility.InstantiatePrefab(fernPrefab, detailGroup);
+                        fern.name = $"Forest_Fern_{fernCount++}";
+                        float gy = GetGroundY(gx, gz);
+                        fern.transform.position = new Vector3(gx, gy, gz);
+                        fern.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                        fern.transform.localScale = Vector3.one * Random.Range(0.90f, 1.40f);
+                    }
+                    else if (roll < 0.65f && pneumatophorePrefab != null)
+                    {
+                        int pNum = Random.Range(3, 7);
+                        for (int pi = 0; pi < pNum; pi++)
+                        {
+                            float px = gx + Random.Range(-1.0f, 1.0f);
+                            float pz = gz + Random.Range(-1.0f, 1.0f);
+                            var pRoot = (GameObject)PrefabUtility.InstantiatePrefab(pneumatophorePrefab, detailGroup);
+                            pRoot.name = $"Forest_Pneumatophore_{pneumatoCount++}";
+                            float gy = GetGroundY(px, pz);
+                            pRoot.transform.position = new Vector3(px, gy, pz);
+                            pRoot.transform.rotation = Quaternion.Euler(Random.Range(-5f, 5f), Random.Range(0f, 360f), Random.Range(-5f, 5f));
+                            pRoot.transform.localScale = Vector3.one * Random.Range(0.80f, 1.35f);
+                        }
+                    }
+                    else if (roll < 0.85f && seedlingPrefab != null)
+                    {
+                        var seedling = (GameObject)PrefabUtility.InstantiatePrefab(seedlingPrefab, detailGroup);
+                        seedling.name = $"Forest_Seedling_{seedlingCount++}";
+                        float gy = GetGroundY(gx, gz);
+                        seedling.transform.position = new Vector3(gx, gy, gz);
+                        seedling.transform.rotation = Quaternion.Euler(Random.Range(-4f, 4f), Random.Range(0f, 360f), Random.Range(-4f, 4f));
+                        seedling.transform.localScale = Vector3.one * Random.Range(0.75f, 1.25f);
                     }
                 }
             }
 
-            // D. Riverbank & Canal Green Edges & Fallen Logs
-            for (float z = MapZMin + 10f; z < MapZMax - 10f; z += 10.0f)
-            {
-                float rxC = RiverCenterX(z);
-                float rhw = RiverHalfWidth(z);
-                float beachW = BeachWidth(z);
-
-                for (int side = -1; side <= 1; side += 2)
-                {
-                    float dx = rxC + side * (rhw + beachW + 2.5f + Random.Range(-0.5f, 1.5f));
-                    float dz = z + Random.Range(-1.2f, 1.2f);
-
-                    float dSq = (dx - playerPos.x) * (dx - playerPos.x) + (dz - playerPos.z) * (dz - playerPos.z);
-                    if (dSq < 6.0f * 6.0f) continue;
-                    if (IsInHazardZone(dx, dz, buffer: 5.0f)) continue;
-
-                    if (Random.value < 0.30f && logPrefab != null)
-                    {
-                        var log = (GameObject)PrefabUtility.InstantiatePrefab(logPrefab, detailGroup);
-                        log.name = $"FallenLog_{logCount++}";
-                        log.transform.position = new Vector3(dx, BankY + 0.08f, dz);
-                        log.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
-                        log.transform.localScale = Vector3.one * Random.Range(0.35f, 0.60f);
-                    }
-                    else if (grassPatchPrefab != null)
-                    {
-                        var grass = (GameObject)PrefabUtility.InstantiatePrefab(grassPatchPrefab, detailGroup);
-                        grass.name = $"Bank_GrassPatch_{grassPatchCount++}";
-                        grass.transform.position = new Vector3(dx, BankY + 0.08f, dz);
-                        grass.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
-                        grass.transform.localScale = Vector3.one * Random.Range(0.50f, 0.85f);
-                    }
-                }
-            }
-
-            Debug.Log($"[BuildSundarbanFullMap] Planted {grassPatchCount} lush Grass Patches and {logCount} logs. ZERO in danger zones.");
+            Debug.Log($"[BuildSundarbanFullMap] Planted {fernCount} Mangrove Ferns, {pneumatoCount} Pencil Roots, {seedlingCount} Seedlings, and {logCount} Logs!");
         }
 
         private static void BuildOceanSystem(Transform parent, Dictionary<string, Material> mats)
@@ -1820,6 +1961,13 @@ namespace SundarbanGuardian.Editor
                 }
             }
 
+            // Position Tiger safely on the elevated West Bank mud crest overlooking the river
+            float spawnX = -45f;
+            float spawnZ = 30f;
+            float spawnY = GetGroundY(spawnX, spawnZ);
+            tiger.transform.position = new Vector3(spawnX, spawnY + 0.05f, spawnZ);
+            tiger.transform.rotation = Quaternion.Euler(0f, 90f, 0f); // Facing East toward the river
+
             EditorUtility.SetDirty(tiger);
         }
 
@@ -1836,21 +1984,23 @@ namespace SundarbanGuardian.Editor
         {
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = 50f;
-            RenderSettings.fogEndDistance = 850f;
-            RenderSettings.fogColor = new Color(0.68f, 0.80f, 0.88f); // coastal sea mist
+            RenderSettings.fogStartDistance = 60f;
+            RenderSettings.fogEndDistance = 950f;
+            RenderSettings.fogColor = new Color(0.72f, 0.82f, 0.88f); // coastal sea mist
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.52f, 0.68f, 0.56f);
-            RenderSettings.ambientEquatorColor = new Color(0.36f, 0.46f, 0.32f);
-            RenderSettings.ambientGroundColor = new Color(0.18f, 0.20f, 0.12f);
+            RenderSettings.ambientSkyColor = new Color(0.60f, 0.72f, 0.62f);
+            RenderSettings.ambientEquatorColor = new Color(0.42f, 0.50f, 0.38f);
+            RenderSettings.ambientGroundColor = new Color(0.24f, 0.26f, 0.18f);
 
             var sun = UnityEngine.Object.FindAnyObjectByType<Light>();
             if (sun != null && sun.type == LightType.Directional)
             {
-                sun.color = new Color(1.0f, 0.94f, 0.82f);
-                sun.intensity = 1.20f;
-                sun.transform.rotation = Quaternion.Euler(38f, 145f, 0f);
+                sun.color = new Color(1.0f, 0.95f, 0.85f);
+                sun.intensity = 1.25f;
+                sun.transform.rotation = Quaternion.Euler(50f, 225f, 0f); // diagonal sunlight matching trial asset
+                sun.shadows = LightShadows.Soft;
+                sun.shadowStrength = 0.60f;
             }
         }
 

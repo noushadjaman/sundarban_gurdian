@@ -6,10 +6,9 @@ using SundarbanGuardian.Environment;
 namespace SundarbanGuardian.Player
 {
     /// <summary>
-    /// Free Fire style Tool Hit / Action Controller.
-    /// Handles the "HIT" button action, executing procedural lunge animations,
-    /// dynamic tool FX bursts (Seed spray, Blade slash, Cleanser mist, Trap smash),
-    /// and triggers Backpack tool clearance and +10 HP healing.
+    /// Free Fire / RPG style Tool Hit & Action Controller.
+    /// Manages 3D tool visualization mounted in front of the animal (Knife, Seed, Cleanser, Crowbar),
+    /// and executes animated tool actions including throwing a spinning knife projectile to cut illegal nets!
     /// </summary>
     public class ToolActionController : MonoBehaviour
     {
@@ -22,6 +21,11 @@ namespace SundarbanGuardian.Player
         public float lungeDistance = 0.45f;
         public float lungeDuration = 0.12f;
         public float recoverDuration = 0.22f;
+
+        [Header("Tool Socket & 3D Models")]
+        public Transform toolSocket;
+        private GameObject[] toolVisualModels = new GameObject[4];
+        private ToolType lastTool = (ToolType)(-1);
 
         private Vector3 initialVisualLocalPos;
         private Quaternion initialVisualLocalRot;
@@ -47,6 +51,160 @@ namespace SundarbanGuardian.Player
                 initialVisualLocalPos = visualTransform.localPosition;
                 initialVisualLocalRot = visualTransform.localRotation;
             }
+
+            BuildToolSocketAndModels();
+        }
+
+        private void BuildToolSocketAndModels()
+        {
+            if (toolSocket == null)
+            {
+                var sGo = new GameObject("Front_Tool_Socket");
+                sGo.transform.SetParent(transform, false);
+                sGo.transform.localPosition = new Vector3(0.35f, 0.48f, 0.95f);
+                sGo.transform.localRotation = Quaternion.Euler(15f, 18f, -10f);
+                toolSocket = sGo.transform;
+            }
+
+            var litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+            // 0. Seed Propagule Model
+            var seedGo = new GameObject("Visual_Seed");
+            seedGo.transform.SetParent(toolSocket, false);
+            var seedBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            seedBody.transform.SetParent(seedGo.transform, false);
+            seedBody.transform.localScale = new Vector3(0.08f, 0.35f, 0.08f);
+            Destroy(seedBody.GetComponent<Collider>());
+            var leaf = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            leaf.transform.SetParent(seedGo.transform, false);
+            leaf.transform.localPosition = new Vector3(0f, 0.38f, 0.05f);
+            leaf.transform.localScale = new Vector3(0.18f, 0.06f, 0.22f);
+            Destroy(leaf.GetComponent<Collider>());
+            var seedMat = new Material(litShader);
+            seedMat.SetColor("_BaseColor", new Color(0.20f, 0.85f, 0.35f, 1f));
+            seedBody.GetComponent<MeshRenderer>().sharedMaterial = seedMat;
+            leaf.GetComponent<MeshRenderer>().sharedMaterial = seedMat;
+            toolVisualModels[0] = seedGo;
+
+            // 1. Knife / Net Cutter Model (Front of character)
+            var knifeGo = new GameObject("Visual_Knife");
+            knifeGo.transform.SetParent(toolSocket, false);
+            // Handle
+            var handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            handle.transform.SetParent(knifeGo.transform, false);
+            handle.transform.localScale = new Vector3(0.07f, 0.22f, 0.07f);
+            Destroy(handle.GetComponent<Collider>());
+            var handleMat = new Material(litShader);
+            handleMat.SetColor("_BaseColor", new Color(0.36f, 0.22f, 0.12f, 1f));
+            handle.GetComponent<MeshRenderer>().sharedMaterial = handleMat;
+            // Blade
+            var blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            blade.transform.SetParent(knifeGo.transform, false);
+            blade.transform.localPosition = new Vector3(0f, 0.32f, 0f);
+            blade.transform.localScale = new Vector3(0.035f, 0.45f, 0.14f);
+            Destroy(blade.GetComponent<Collider>());
+            var bladeMat = new Material(litShader);
+            bladeMat.SetColor("_BaseColor", new Color(0.92f, 0.95f, 0.98f, 1f));
+            bladeMat.SetFloat("_Metallic", 0.92f);
+            bladeMat.SetFloat("_Smoothness", 0.88f);
+            blade.GetComponent<MeshRenderer>().sharedMaterial = bladeMat;
+            toolVisualModels[1] = knifeGo;
+
+            // 2. Cleaning Liquid Flask
+            var flaskGo = new GameObject("Visual_Flask");
+            flaskGo.transform.SetParent(toolSocket, false);
+            var flaskBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            flaskBody.transform.SetParent(flaskGo.transform, false);
+            flaskBody.transform.localScale = new Vector3(0.18f, 0.28f, 0.18f);
+            Destroy(flaskBody.GetComponent<Collider>());
+            var flaskMat = new Material(litShader);
+            flaskMat.SetColor("_BaseColor", new Color(0.15f, 0.80f, 0.95f, 1f));
+            flaskBody.GetComponent<MeshRenderer>().sharedMaterial = flaskMat;
+            toolVisualModels[2] = flaskGo;
+
+            // 3. Trap Destroyer Crowbar
+            var barGo = new GameObject("Visual_TrapDestroyer");
+            barGo.transform.SetParent(toolSocket, false);
+            var barBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            barBody.transform.SetParent(barGo.transform, false);
+            barBody.transform.localScale = new Vector3(0.08f, 0.55f, 0.08f);
+            Destroy(barBody.GetComponent<Collider>());
+            var claw = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            claw.transform.SetParent(barGo.transform, false);
+            claw.transform.localPosition = new Vector3(0.08f, 0.28f, 0f);
+            claw.transform.localRotation = Quaternion.Euler(0f, 0f, -35f);
+            claw.transform.localScale = new Vector3(0.06f, 0.18f, 0.06f);
+            Destroy(claw.GetComponent<Collider>());
+            var barMat = new Material(litShader);
+            barMat.SetColor("_BaseColor", new Color(0.85f, 0.70f, 0.20f, 1f));
+            barMat.SetFloat("_Metallic", 0.80f);
+            barBody.GetComponent<MeshRenderer>().sharedMaterial = barMat;
+            claw.GetComponent<MeshRenderer>().sharedMaterial = barMat;
+            toolVisualModels[3] = barGo;
+
+            UpdateVisibleTool();
+        }
+
+        private void Update()
+        {
+            if (backpack != null && backpack.activeTool != lastTool)
+            {
+                UpdateVisibleTool();
+            }
+
+            // Gentle tool bobbing in idle
+            if (toolSocket != null && !isPerformingAction)
+            {
+                float bob = Mathf.Sin(Time.time * 2.5f) * 0.03f;
+                toolSocket.localPosition = new Vector3(0.35f, 0.48f + bob, 0.95f);
+            }
+
+            // Direct input check for PC / Editor (F key, Enter key, Left Mouse Click)
+            bool triggerAction = false;
+#if ENABLE_INPUT_SYSTEM
+            try
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                var mouse = UnityEngine.InputSystem.Mouse.current;
+                if (kb != null && (kb.fKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame)) triggerAction = true;
+                if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                {
+                    var es = UnityEngine.EventSystems.EventSystem.current;
+                    if (es == null || !es.IsPointerOverGameObject()) triggerAction = true;
+                }
+            }
+            catch (System.Exception) { }
+#else
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.Return)) triggerAction = true;
+                if (Input.GetMouseButtonDown(0))
+                {
+                    var es = UnityEngine.EventSystems.EventSystem.current;
+                    if (es == null || !es.IsPointerOverGameObject()) triggerAction = true;
+                }
+            }
+            catch (System.Exception) { }
+#endif
+            if (triggerAction)
+            {
+                OnHitPressed();
+            }
+        }
+
+        private void UpdateVisibleTool()
+        {
+            if (backpack == null) return;
+            lastTool = backpack.activeTool;
+
+            int activeIdx = (int)lastTool;
+            for (int i = 0; i < toolVisualModels.Length; i++)
+            {
+                if (toolVisualModels[i] != null)
+                {
+                    toolVisualModels[i].SetActive(isPerformingAction && i == activeIdx);
+                }
+            }
         }
 
         private void OnEnable()
@@ -65,14 +223,61 @@ namespace SundarbanGuardian.Player
 
             ToolType currentTool = (backpack != null) ? backpack.activeTool : ToolType.Seed;
 
-            // Trigger clearance if near obstacle
+            // Trigger clearance check
             bool clearedAny = false;
-            if (backpack != null)
+
+            // 1. Tiger trap swipe check
+            bool isTiger = gameObject.name.Contains("Tiger") || (transform.parent != null && transform.parent.name.Contains("Tiger"));
+            if (isTiger)
+            {
+                var traps = Object.FindObjectsByType<HumanTrap>(FindObjectsSortMode.None);
+                foreach (var trap in traps)
+                {
+                    if (trap != null && !trap.isDestroyed && Vector3.Distance(transform.position, trap.transform.position) <= 4.5f)
+                    {
+                        trap.DestroyTrap(gameObject);
+                        clearedAny = true;
+                        break;
+                    }
+                }
+            }
+
+            // 2. Deforestation zone seed planting check
+            if (backpack != null && backpack.GetCount(ToolType.Seed) > 0)
+            {
+                var worldZones = Object.FindObjectsByType<WorldDangerZone>(FindObjectsSortMode.None);
+                foreach (var wz in worldZones)
+                {
+                    if (wz != null && !wz.isFinished && Vector3.Distance(transform.position, wz.transform.position) <= wz.interactionRadius)
+                    {
+                        if (wz.TryFinishWithSeeds(gameObject))
+                        {
+                            clearedAny = true;
+                            break;
+                        }
+                    }
+                }
+
+                var hazardTriggers = Object.FindObjectsByType<SundarbanGuardian.Core.HazardZoneTrigger>(FindObjectsSortMode.None);
+                foreach (var ht in hazardTriggers)
+                {
+                    if (ht != null && !ht.isCleared && Vector3.Distance(transform.position, ht.transform.position) <= ht.interactionRadius)
+                    {
+                        if (ht.TryInteractWithSeeds(backpack))
+                        {
+                            clearedAny = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 3. Standard backpack tool clearance
+            if (!clearedAny && backpack != null)
             {
                 clearedAny = backpack.TryUseTool();
             }
 
-            // Always execute energetic hit animation & tool FX
             if (activeActionCoroutine != null) StopCoroutine(activeActionCoroutine);
             activeActionCoroutine = StartCoroutine(PerformToolActionRoutine(currentTool, clearedAny));
         }
@@ -80,8 +285,9 @@ namespace SundarbanGuardian.Player
         private IEnumerator PerformToolActionRoutine(ToolType tool, bool clearedObstacle)
         {
             isPerformingAction = true;
+            UpdateVisibleTool();
 
-            // 1. Check for Animator attack triggers
+            // 1. Animator attack triggers if present
             if (animator != null && animator.runtimeAnimatorController != null)
             {
                 if (HasParameter(animator, "Attack")) animator.SetTrigger("Attack");
@@ -89,50 +295,172 @@ namespace SundarbanGuardian.Player
                 else if (HasParameter(animator, "Action")) animator.SetTrigger("Action");
             }
 
-            // 2. Spawn 3D Visual Tool Slash/Burst FX at front of character
-            SpawnToolVisualFx(tool, clearedObstacle);
-
-            // 3. Procedural dynamic strike lunge & recoil
-            if (visualTransform != null)
+            // 2. Specific animated tool behavior
+            if (tool == ToolType.NetCutter)
             {
-                Vector3 startPos = initialVisualLocalPos;
-                Quaternion startRot = initialVisualLocalRot;
-                Vector3 forwardLunge = startPos + new Vector3(0f, 0.12f, lungeDistance);
-                Quaternion strikeRot = startRot * Quaternion.Euler(-12f, 0f, 0f);
-
-                // Quick forward strike thrust
-                float elapsed = 0f;
-                while (elapsed < lungeDuration)
-                {
-                    elapsed += Time.deltaTime;
-                    float t = Mathf.Clamp01(elapsed / lungeDuration);
-                    float curve = Mathf.Sin(t * Mathf.PI * 0.5f);
-                    visualTransform.localPosition = Vector3.Lerp(startPos, forwardLunge, curve);
-                    visualTransform.localRotation = Quaternion.Slerp(startRot, strikeRot, curve);
-                    yield return null;
-                }
-
-                // Elastic recovery back to stance
-                elapsed = 0f;
-                while (elapsed < recoverDuration)
-                {
-                    elapsed += Time.deltaTime;
-                    float t = Mathf.Clamp01(elapsed / recoverDuration);
-                    float smooth = Mathf.SmoothStep(0f, 1f, t);
-                    visualTransform.localPosition = Vector3.Lerp(forwardLunge, startPos, smooth);
-                    visualTransform.localRotation = Quaternion.Slerp(strikeRot, startRot, smooth);
-                    yield return null;
-                }
-
-                visualTransform.localPosition = startPos;
-                visualTransform.localRotation = startRot;
+                // Animated Knife Throwing Action to cut the net!
+                yield return StartCoroutine(ThrowKnifeAtNetRoutine());
             }
             else
             {
-                yield return new WaitForSeconds(lungeDuration + recoverDuration);
+                // Procedural tool strike lunge
+                SpawnToolVisualFx(tool, clearedObstacle);
+
+                if (visualTransform != null)
+                {
+                    Vector3 startPos = initialVisualLocalPos;
+                    Quaternion startRot = initialVisualLocalRot;
+                    Vector3 forwardLunge = startPos + new Vector3(0f, 0.12f, lungeDistance);
+                    Quaternion strikeRot = startRot * Quaternion.Euler(-12f, 0f, 0f);
+
+                    float elapsed = 0f;
+                    while (elapsed < lungeDuration)
+                    {
+                        elapsed += Time.deltaTime;
+                        float t = Mathf.Clamp01(elapsed / lungeDuration);
+                        float curve = Mathf.Sin(t * Mathf.PI * 0.5f);
+                        visualTransform.localPosition = Vector3.Lerp(startPos, forwardLunge, curve);
+                        visualTransform.localRotation = Quaternion.Slerp(startRot, strikeRot, curve);
+                        yield return null;
+                    }
+
+                    elapsed = 0f;
+                    while (elapsed < recoverDuration)
+                    {
+                        elapsed += Time.deltaTime;
+                        float t = Mathf.Clamp01(elapsed / recoverDuration);
+                        float smooth = Mathf.SmoothStep(0f, 1f, t);
+                        visualTransform.localPosition = Vector3.Lerp(forwardLunge, startPos, smooth);
+                        visualTransform.localRotation = Quaternion.Slerp(strikeRot, startRot, smooth);
+                        yield return null;
+                    }
+
+                    visualTransform.localPosition = startPos;
+                    visualTransform.localRotation = startRot;
+                }
+                else
+                {
+                    yield return new WaitForSeconds(lungeDuration + recoverDuration);
+                }
             }
 
             isPerformingAction = false;
+            UpdateVisibleTool();
+        }
+
+        private IEnumerator ThrowKnifeAtNetRoutine()
+        {
+            // Temporarily hide the mounted front knife
+            if (toolVisualModels[1] != null) toolVisualModels[1].SetActive(false);
+
+            // Find nearest Illegal Net within range
+            IllegalNetObstacle targetNet = null;
+            var nets = Object.FindObjectsByType<IllegalNetObstacle>(FindObjectsSortMode.None);
+            float nearestDist = 18f;
+            foreach (var n in nets)
+            {
+                if (n == null || !n.gameObject.activeInHierarchy || n.isCleared) continue;
+                float d = Vector3.Distance(transform.position, n.transform.position);
+                if (d < nearestDist)
+                {
+                    nearestDist = d;
+                    targetNet = n;
+                }
+            }
+
+            // Spawn 3D Knife Projectile
+            Vector3 startPos = (toolSocket != null) ? toolSocket.position : transform.position + transform.forward * 0.8f + Vector3.up * 0.5f;
+            Vector3 targetPos = (targetNet != null) ? targetNet.transform.position + Vector3.up * 0.4f : startPos + transform.forward * 8f;
+
+            var projGo = new GameObject("Knife_Projectile");
+            projGo.transform.position = startPos;
+
+            var litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+            var handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            handle.transform.SetParent(projGo.transform, false);
+            handle.transform.localScale = new Vector3(0.08f, 0.25f, 0.08f);
+            Destroy(handle.GetComponent<Collider>());
+            var handleMat = new Material(litShader);
+            handleMat.SetColor("_BaseColor", new Color(0.36f, 0.22f, 0.12f, 1f));
+            handle.GetComponent<MeshRenderer>().sharedMaterial = handleMat;
+
+            var blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            blade.transform.SetParent(projGo.transform, false);
+            blade.transform.localPosition = new Vector3(0f, 0.35f, 0f);
+            blade.transform.localScale = new Vector3(0.04f, 0.55f, 0.16f);
+            Destroy(blade.GetComponent<Collider>());
+            var bladeMat = new Material(litShader);
+            bladeMat.SetColor("_BaseColor", new Color(0.95f, 0.98f, 1f, 1f));
+            bladeMat.SetFloat("_Metallic", 0.95f);
+            bladeMat.SetFloat("_Smoothness", 0.95f);
+            blade.GetComponent<MeshRenderer>().sharedMaterial = bladeMat;
+
+            // Trail
+            var trail = projGo.AddComponent<TrailRenderer>();
+            trail.time = 0.25f;
+            trail.startWidth = 0.18f;
+            trail.endWidth = 0.02f;
+            var tMat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? litShader);
+            tMat.SetColor("_BaseColor", new Color(0.3f, 0.9f, 1.0f, 0.75f));
+            trail.sharedMaterial = tMat;
+
+            // Animate flight & spinning
+            float flightTime = Mathf.Clamp(Vector3.Distance(startPos, targetPos) / 16f, 0.22f, 0.45f);
+            float elapsed = 0f;
+
+            while (elapsed < flightTime)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / flightTime;
+
+                // Parabolic arc trajectory
+                Vector3 currentP = Vector3.Lerp(startPos, targetPos, t);
+                currentP.y += Mathf.Sin(t * Mathf.PI) * 0.75f;
+                projGo.transform.position = currentP;
+
+                // High-speed throw spin
+                projGo.transform.Rotate(Vector3.right * 1440f * Time.deltaTime, Space.Self);
+                yield return null;
+            }
+
+            // Impact cut effect
+            SpawnNetCutSlashFx(targetPos);
+
+            if (targetNet != null)
+            {
+                targetNet.DestroyWithKnife(backpack);
+            }
+
+            Destroy(projGo, 0.1f);
+            yield return new WaitForSeconds(0.15f);
+
+            // Re-show mounted knife
+            if (toolVisualModels[1] != null && backpack != null && backpack.activeTool == ToolType.NetCutter)
+            {
+                toolVisualModels[1].SetActive(true);
+            }
+        }
+
+        private void SpawnNetCutSlashFx(Vector3 pos)
+        {
+            var fxGo = new GameObject("Net_Cut_Slash_FX");
+            fxGo.transform.position = pos;
+
+            var litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+            // Cyan slash crescent
+            var slash = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            slash.transform.SetParent(fxGo.transform, false);
+            slash.transform.localScale = new Vector3(2.2f, 0.04f, 0.7f);
+            slash.transform.localRotation = Quaternion.Euler(25f, Random.Range(0f, 180f), 70f);
+            Destroy(slash.GetComponent<Collider>());
+            var sMat = new Material(litShader);
+            sMat.SetColor("_BaseColor", new Color(0.2f, 0.95f, 1.0f, 0.9f));
+            sMat.SetFloat("_Smoothness", 0.95f);
+            slash.GetComponent<MeshRenderer>().sharedMaterial = sMat;
+
+            Destroy(fxGo, 0.45f);
         }
 
         private void SpawnToolVisualFx(ToolType tool, bool hitTarget)
@@ -145,22 +473,15 @@ namespace SundarbanGuardian.Player
             switch (tool)
             {
                 case ToolType.Seed:
-                    // Emerald green seed scatter & blooming burst
                     CreateSeedBurst(fxRoot.transform);
                     break;
-
                 case ToolType.NetCutter:
-                    // Cyan glowing crescent slash arc
                     CreateSlashArc(fxRoot.transform);
                     break;
-
                 case ToolType.CleaningLiquid:
-                    // Aquamarine cleansing splash spray
                     CreateCleaningSplash(fxRoot.transform);
                     break;
-
                 case ToolType.TrapDestroyer:
-                    // Heavy golden shockwave ground slam
                     CreateTrapSmash(fxRoot.transform);
                     break;
             }
@@ -176,14 +497,11 @@ namespace SundarbanGuardian.Player
                 seed.transform.SetParent(parent);
                 seed.transform.localScale = Vector3.one * 0.22f;
                 seed.transform.localPosition = new Vector3(Random.Range(-0.4f, 0.4f), Random.Range(0f, 0.5f), Random.Range(0f, 0.6f));
-
-                var col = seed.GetComponent<Collider>();
-                if (col != null) Destroy(col);
-
+                Destroy(seed.GetComponent<Collider>());
                 var rend = seed.GetComponent<MeshRenderer>();
                 if (rend != null)
                 {
-                    var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                    var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
                     mat.color = new Color(0.2f, 0.95f, 0.35f, 1.0f);
                     mat.SetFloat("_Smoothness", 0.8f);
                     rend.sharedMaterial = mat;
@@ -198,15 +516,12 @@ namespace SundarbanGuardian.Player
             slash.transform.localPosition = new Vector3(0f, 0f, 0.4f);
             slash.transform.localRotation = Quaternion.Euler(0f, 90f, 80f);
             slash.transform.localScale = new Vector3(1.8f, 0.04f, 0.55f);
-
-            var col = slash.GetComponent<Collider>();
-            if (col != null) Destroy(col);
-
+            Destroy(slash.GetComponent<Collider>());
             var rend = slash.GetComponent<MeshRenderer>();
             if (rend != null)
             {
-                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                mat.color = new Color(0.25f, 0.85f, 1.0f, 0.85f); // glowing cyan blade arc
+                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+                mat.color = new Color(0.2f, 0.85f, 1.0f, 0.85f);
                 mat.SetFloat("_Smoothness", 0.9f);
                 rend.sharedMaterial = mat;
             }
@@ -214,40 +529,37 @@ namespace SundarbanGuardian.Player
 
         private void CreateCleaningSplash(Transform parent)
         {
-            var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            disc.transform.SetParent(parent);
-            disc.transform.localPosition = Vector3.down * 0.4f;
-            disc.transform.localScale = new Vector3(2.2f, 0.05f, 2.2f);
-
-            var col = disc.GetComponent<Collider>();
-            if (col != null) Destroy(col);
-
-            var rend = disc.GetComponent<MeshRenderer>();
-            if (rend != null)
+            for (int i = 0; i < 12; i++)
             {
-                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                mat.color = new Color(0.15f, 0.92f, 0.85f, 0.65f); // aquamarine cleansing wave
-                mat.SetFloat("_Smoothness", 0.7f);
-                rend.sharedMaterial = mat;
+                var drop = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                drop.transform.SetParent(parent);
+                drop.transform.localScale = Vector3.one * Random.Range(0.12f, 0.28f);
+                drop.transform.localPosition = new Vector3(Random.Range(-0.6f, 0.6f), Random.Range(-0.2f, 0.5f), Random.Range(0.2f, 1.1f));
+                Destroy(drop.GetComponent<Collider>());
+                var rend = drop.GetComponent<MeshRenderer>();
+                if (rend != null)
+                {
+                    var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+                    mat.color = new Color(0.15f, 0.85f, 0.95f, 0.85f);
+                    mat.SetFloat("_Smoothness", 0.95f);
+                    rend.sharedMaterial = mat;
+                }
             }
         }
 
         private void CreateTrapSmash(Transform parent)
         {
-            var slam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            slam.transform.SetParent(parent);
-            slam.transform.localPosition = Vector3.down * 0.5f;
-            slam.transform.localScale = new Vector3(2.5f, 0.08f, 2.5f);
-
-            var col = slam.GetComponent<Collider>();
-            if (col != null) Destroy(col);
-
-            var rend = slam.GetComponent<MeshRenderer>();
+            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ring.transform.SetParent(parent);
+            ring.transform.localPosition = new Vector3(0f, -0.6f, 0.4f);
+            ring.transform.localScale = new Vector3(2.2f, 0.05f, 2.2f);
+            Destroy(ring.GetComponent<Collider>());
+            var rend = ring.GetComponent<MeshRenderer>();
             if (rend != null)
             {
-                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                mat.color = new Color(0.95f, 0.70f, 0.15f, 0.85f); // golden impact wave
-                mat.SetFloat("_Smoothness", 0.8f);
+                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+                mat.color = new Color(0.95f, 0.80f, 0.20f, 0.75f);
+                mat.SetFloat("_Smoothness", 0.7f);
                 rend.sharedMaterial = mat;
             }
         }

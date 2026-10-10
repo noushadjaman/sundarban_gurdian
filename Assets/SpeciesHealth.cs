@@ -6,12 +6,12 @@ namespace SundarbanGuardian.Core
     public class SpeciesHealth : MonoBehaviour
     {
         [Header("Health Settings")]
-        public float maxHealth = 200f;
+        public float maxHealth = 150f;
         public float currentHealth { get; private set; }
 
         [Header("Travel & Regen")]
         [Tooltip("HP recovered per second while moving in safe environments")]
-        public float travelHealRate = 1.0f;
+        public float travelHealRate = 0.4f;
 
         [Header("Starvation (Tiger Food Chain)")]
         [Tooltip("Passive HP loss rate if starving (e.g. Tiger in deforested zones)")]
@@ -74,9 +74,19 @@ namespace SundarbanGuardian.Core
             HealthChanged?.Invoke(currentHealth / maxHealth);
         }
 
+        public event Action<float> FoodEatenEvent;
+
         public void EatFood(float healAmount)
         {
+            if (healAmount <= 0f || currentHealth <= 0f) return;
             Heal(healAmount);
+            FoodEatenEvent?.Invoke(healAmount);
+        }
+
+        public void ResetHealth()
+        {
+            currentHealth = maxHealth;
+            HealthChanged?.Invoke(1f);
         }
     }
 }

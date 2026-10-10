@@ -8,7 +8,7 @@ namespace SundarbanGuardian.Core
     /// <summary>
     /// Environmental Hazard Zone representing satellite NDVI canopy degradation,
     /// high temperature, or pollution.
-    /// Can be restored and made safe using Seed (বীজ) for deforested zones or
+    /// Can be restored and finished using Seed (বীজ) for deforested canopy zones or
     /// Cleaning Liquid (পরিষ্কারের তরল) for pollution/oil spill zones.
     /// </summary>
     public class HazardZoneTrigger : UsableObstacle
@@ -23,8 +23,15 @@ namespace SundarbanGuardian.Core
         public float mediumDamagePerSec = 6f;
         public float highDamagePerSec = 12f;
 
+        [Header("Version 2 Seeding Progress")]
+        public int seedsPlantedInZone = 0; // Target: 5 seeds per zone
+
         [Header("Restoration Visuals")]
         public GameObject restoredVegetationPrefab;
+
+        private GameObject hazardRingGo;
+        private Light hazardLight;
+        private bool wasPlayerInside = false;
 
         protected override void OnEnable()
         {
@@ -39,6 +46,15 @@ namespace SundarbanGuardian.Core
             {
                 rend.enabled = false;
             }
+
+            var rb = GetComponent<Rigidbody>();
+            if (rb == null)
+            {
+                rb = gameObject.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                rb.useGravity = false;
+            }
+
             ConfigureToolRequirement();
         }
 
@@ -64,13 +80,170 @@ namespace SundarbanGuardian.Core
             }
 
             var col = GetComponent<Collider>();
-            if (col is SphereCollider sc)
+            if (col is CapsuleCollider cc)
             {
-                interactionRadius = Mathf.Max(sc.radius * transform.lossyScale.x, 6.0f);
+                interactionRadius = Mathf.Max(cc.radius * transform.lossyScale.x, 22.0f);
+            }
+            else if (col is SphereCollider sc)
+            {
+                interactionRadius = Mathf.Max(sc.radius * transform.lossyScale.x, 22.0f);
             }
             else
             {
-                interactionRadius = 7.0f;
+                interactionRadius = 22.0f;
+            }
+
+            EnsureHazardVisuals();
+        }
+
+        public void EnsureHazardVisuals()
+        {
+            // The mud must look natural — DO NOT spawn red discs, cylinders, or lights on the ground.
+            // Danger zones are displayed exclusively on the NASA Landsat map radar.
+            if (hazardRingGo != null)
+            {
+#if UNITY_EDITOR
+                if (!Application.isPlaying) DestroyImmediate(hazardRingGo);
+                else Destroy(hazardRingGo);
+#else
+                Destroy(hazardRingGo);
+#endif
+                hazardRingGo = null;
+            }
+
+            // Remove ANY legacy Hazard_Ground_Ring, Hazard_Beacon_Light, or Scarred_Deforestation_Soil children
+            var allChildTransforms = GetComponentsInChildren<Transform>(true);
+            foreach (var t in allChildTransforms)
+            {
+                if (t != null && t != transform)
+                {
+                    string n = t.name;
+                    if (n.Contains("Hazard_Ground_Ring") || n.Contains("Scarred_Deforestation_Soil") || 
+                        n.Contains("Hazard_Beacon_Light") || n.Contains("Sensor_Beacon"))
+                    {
+#if UNITY_EDITOR
+                        if (!Application.isPlaying) DestroyImmediate(t.gameObject);
+                        else Destroy(t.gameObject);
+#else
+                        Destroy(t.gameObject);
+#endif
+                    }
+                }
+            }
+
+            hazardLight = null;
+        }
+
+        private void Update()
+        {
+            if (isCleared)
+            {
+                if (wasPlayerInside)
+                {
+                    wasPlayerInside = false;
+                    HudEvents.RaiseExitedHazardZone();
+                }
+                return;
+            }
+
+            var backpack = Backpack.LocalPlayerBackpack;
+            if (backpack == null)
+            {
+                var playerGo = GameObject.FindWithTag("Player") ?? GameObject.Find("Tiger");
+                if (playerGo != null) backpack = playerGo.GetComponent<Backpack>();
+            }
+
+            if (backpack == null) return;
+
+            float dist = Vector3.Distance(transform.position, backpack.transform.position);
+            bool isInside = (dist <= interactionRadius);
+
+            if (isInside && !wasPlayerInside)
+            {
+                wasPlayerInside = true;
+                HudEvents.RaiseEnteredHazardZone(riskTier, rawDataValue, rawDataUnit);
+            }
+            else if (!isInside && wasPlayerInside)
+            {
+                wasPlayerInside = false;
+                HudEvents.RaiseExitedHazardZone();
+            }
+
+            if (isInside)
+            {
+                var health = backpack.GetComponent<SpeciesHealth>();
+                if (health != null)
+                {
+                    float dps = riskTier switch
+                    {
+                        "high" => highDamagePerSec,
+                        "medium" => mediumDamagePerSec,
+                        "safe" => 0f,
+                        _ => lowDamagePerSec
+                    };
+                    health.TakeDamage(dps * Time.deltaTime);
+                }
+
+                // Direct check to finish this danger zone with Seeds on F, Enter, Space, or Click
+                bool actionPressed = false;
+#if ENABLE_INPUT_SYSTEM
+                try
+                {
+                    var kb = UnityEngine.InputSystem.Keyboard.current;
+                    var mouse = UnityEngine.InputSystem.Mouse.current;
+                    if (kb != null && (kb.fKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame)) actionPressed = true;
+                    if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                    {
+                        var es = UnityEngine.EventSystems.EventSystem.current;
+                        if (es == null || !es.IsPointerOverGameObject()) actionPressed = true;
+                    }
+                }
+                catch (System.Exception) { }
+#else
+                try
+                {
+                    if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space)) actionPressed = true;
+                    if (Input.GetMouseButtonDown(0))
+                    {
+                        var es = UnityEngine.EventSystems.EventSystem.current;
+                        if (es == null || !es.IsPointerOverGameObject()) actionPressed = true;
+                    }
+                }
+                catch (System.Exception) { }
+#endif
+
+                if (actionPressed)
+                {
+                    TryInteractWithSeeds(backpack);
+                }
+            }
+        }
+
+        public bool TryInteractWithSeeds(Backpack backpack)
+        {
+            if (isCleared) return false;
+            if (backpack == null) return false;
+
+            if (backpack.GetCount(ToolType.Seed) > 0)
+            {
+                backpack.ConsumeTool(ToolType.Seed, 1);
+                seedsPlantedInZone++;
+
+                if (seedsPlantedInZone < 5)
+                {
+                    HudEvents.RaiseEnvironmentalRestoration($"🌱 Planted Mangrove Seed ({seedsPlantedInZone}/5 in this zone)");
+                    return true;
+                }
+                else
+                {
+                    Clear(backpack);
+                    return true;
+                }
+            }
+            else
+            {
+                HudEvents.RaiseEnvironmentalRestoration("⚠️ Need Mangrove Seeds (বীজ) to restore this danger zone! Collect seeds from the ground.");
+                return false;
             }
         }
 
@@ -81,29 +254,24 @@ namespace SundarbanGuardian.Core
             var health = other.GetComponent<SpeciesHealth>();
             if (health == null) return;
 
-            float dps = riskTier switch
+            float dps = 0f;
+            if (riskTier != null && riskTier.ToLowerInvariant().Contains("pollut"))
             {
-                "high" => highDamagePerSec,
-                "medium" => mediumDamagePerSec,
-                "safe" => 0f,
-                _ => lowDamagePerSec
-            };
+                // V2 exact requirement: polluted water loses 5 HP/sec
+                dps = 5.0f;
+            }
+            else
+            {
+                dps = riskTier switch
+                {
+                    "high" => highDamagePerSec,
+                    "medium" => mediumDamagePerSec,
+                    "safe" => 0f,
+                    _ => lowDamagePerSec
+                };
+            }
 
             health.TakeDamage(dps * Time.deltaTime);
-        }
-
-        private void OnTriggerEnter(Collider other)
-        {
-            if (isCleared) return;
-            if (other.GetComponent<SpeciesHealth>() == null) return;
-
-            HudEvents.RaiseEnteredHazardZone(riskTier, rawDataValue, rawDataUnit);
-        }
-
-        private void OnTriggerExit(Collider other)
-        {
-            if (other.GetComponent<SpeciesHealth>() == null) return;
-            HudEvents.RaiseExitedHazardZone();
         }
 
         protected override void OnClearedVisuals()
@@ -115,6 +283,52 @@ namespace SundarbanGuardian.Core
             riskTier = "safe";
 
             HudEvents.RaiseExitedHazardZone();
+            HudEvents.RaiseHazardZoneCleared(transform.position.x, transform.position.z);
+
+            // Transform scarred mud patch to fertile moss/greenery
+            var scarredSoil = transform.Find("Deforestation_Visuals/Scarred_Deforestation_Soil");
+            if (scarredSoil != null)
+            {
+                var smr = scarredSoil.GetComponent<MeshRenderer>();
+                if (smr != null)
+                {
+                    var fertMat = new Material(smr.sharedMaterial);
+                    fertMat.color = new Color(0.18f, 0.58f, 0.24f, 0.85f);
+                    smr.sharedMaterial = fertMat;
+                }
+            }
+
+            var sensorLight = transform.Find("Deforestation_Visuals/Deforestation_Warning_Post/Sensor_Beacon")?.GetComponent<Light>();
+            if (sensorLight != null)
+            {
+                sensorLight.color = new Color(0.2f, 0.95f, 0.4f);
+            }
+
+            // Reward player with health and celebratory toast
+            var player = Backpack.LocalPlayerBackpack;
+            if (player != null)
+            {
+                var health = player.GetComponent<SpeciesHealth>();
+                if (health != null) health.Heal(25f);
+            }
+
+            if (GameManager.Instance != null && requiredTool == ToolType.Seed)
+            {
+                GameManager.Instance.zonesRestoredCount++;
+                int restored = GameManager.Instance.zonesRestoredCount;
+                if (restored < 3)
+                {
+                    HudEvents.RaiseEnvironmentalRestoration($"🌲 Deforestation Zone Reforested! ({restored}/3 Zones Restored)");
+                }
+                else
+                {
+                    HudEvents.RaiseEnvironmentalRestoration($"🎉 3/3 Deforestation Zones Restored! Reach the Ocean Sanctuary to complete Level 2!");
+                }
+            }
+            else
+            {
+                HudEvents.RaiseEnvironmentalRestoration("🎉 +25 HP — DEFORESTATION ZONE RESTORED! Mangroves Reforested with Seeds!");
+            }
 
             // Spawn restored green vegetation if Seed was used
             if (requiredTool == ToolType.Seed)
@@ -148,12 +362,20 @@ namespace SundarbanGuardian.Core
                 sapling.transform.localScale = new Vector3(0.6f, UnityEngine.Random.Range(0.8f, 1.6f), 0.6f);
 
                 var colSapling = sapling.GetComponent<Collider>();
-                if (colSapling != null) Destroy(colSapling);
+                if (colSapling != null)
+                {
+#if UNITY_EDITOR
+                    if (!Application.isPlaying) DestroyImmediate(colSapling);
+                    else Destroy(colSapling);
+#else
+                    Destroy(colSapling);
+#endif
+                }
 
                 var mr = sapling.GetComponent<MeshRenderer>();
                 if (mr != null)
                 {
-                    var m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                    var m = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
                     m.color = new Color(0.18f, 0.82f, 0.32f, 1.0f); // vibrant emerald regrowth
                     m.SetFloat("_Smoothness", 0.4f);
                     mr.sharedMaterial = m;

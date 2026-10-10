@@ -1,49 +1,76 @@
 {
   "levelId": "level_deer_01",
   "speciesId": "deer",
-  "realCoordinateName": "Kotka Wildlife Sanctuary, Sundarbans",
-  "latitude": 21.87,
-  "longitude": 89.75,
+  "realCoordinateName": "Northern Forest Ridge to Kotka Ocean Sanctuary",
+  "latitude": 22.40,
+  "longitude": 89.65,
   "dataSource": "MOD13Q1 250m NDVI Composite & Bangladesh Forest Dept Field Survey",
-  "factTextBn": "হরিণ নিরাপদে মিষ্টি পানির উৎসে পৌঁছেছে। কিন্তু সুন্দরবনের মিঠাপানির উৎস দ্রুত সংকুচিত হচ্ছে — পলি জমা ও লবণাক্ততা বৃদ্ধির কারণে মিষ্টি পানির পুকুরগুলো নষ্ট হয়ে যাচ্ছে।",
-  "startZone": { "centerX": 85, "centerZ": 48, "radius": 4 },
-  "goalZone": { "centerX": -40, "centerZ": 155, "radius": 16 },
+  "factTextBn": "The Spotted Deer (Axis axis) begins its migration from the northern jungle edge heading south toward the open ocean coast. Dodge armed poachers, jump over concealed wire snares, evade stalking crocodiles, and sprint across mudflats to reach the ocean-side sweetwater sanctuary!",
+  "startZone": { "centerX": -35, "centerZ": 245, "radius": 10 },
+  "goalZone": { "centerX": -30, "centerZ": -95, "radius": 22 },
   "hazardZones": [
     {
-      "zoneId": "crocodile_crossing_01",
-      "centerX": 38,
-      "centerZ": 48,
-      "radius": 22,
+      "zoneId": "north_hunter_gunman_patrol",
+      "centerX": -32,
+      "centerZ": 220,
+      "radius": 24,
       "riskTier": "high",
-      "rawDataValue": 40.0,
-      "rawDataUnit": "লবণাক্ত মোহনা কুমির এলাকা (Croc Crossing)"
+      "rawDataValue": 50.0,
+      "rawDataUnit": "Armed Hunter Gunman Scoped Rifle Threat"
     },
     {
-      "zoneId": "poacher_mudflat_01",
-      "centerX": -8,
-      "centerZ": 50,
+      "zoneId": "deforestation_timber_felling_north",
+      "centerX": -25,
+      "centerZ": 175,
       "radius": 26,
       "riskTier": "high",
-      "rawDataValue": 0.18,
-      "rawDataUnit": "চোরাশিকারি ফাঁদ অঞ্চল (Poacher Traps)"
+      "rawDataValue": 0.14,
+      "rawDataUnit": "NDVI Deforested Logging Clearing & Heat Stress"
     },
     {
-      "zoneId": "deforestation_clearing_01",
-      "centerX": -60,
-      "centerZ": 75,
-      "radius": 32,
+      "zoneId": "concealed_deer_snare_trail",
+      "centerX": -28,
+      "centerZ": 130,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 0.18,
+      "rawDataUnit": "Illegal Wire Snares & Deer Foot Traps"
+    },
+    {
+      "zoneId": "deforestation_logging_basin_mid",
+      "centerX": 25,
+      "centerZ": 90,
+      "radius": 26,
       "riskTier": "high",
       "rawDataValue": 0.12,
-      "rawDataUnit": "বৃক্ষনিধন মরুভূমি অঞ্চল (Deforested Clearing)"
+      "rawDataUnit": "NDVI Illegal Clear-Cut Timber Basin"
     },
     {
-      "zoneId": "hypersaline_mudflat_02",
-      "centerX": -14,
-      "centerZ": 125,
-      "radius": 28,
+      "zoneId": "deforestation_clearing_south",
+      "centerX": -18,
+      "centerZ": 20,
+      "radius": 26,
+      "riskTier": "high",
+      "rawDataValue": 0.15,
+      "rawDataUnit": "NDVI Degraded Mangrove Wasteland & Canopy Loss"
+    },
+    {
+      "zoneId": "coastal_hunter_ambush_outpost",
+      "centerX": 22,
+      "centerZ": -20,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 50.0,
+      "rawDataUnit": "Armed Poacher Sentry & Red Laser Sight Lock"
+    },
+    {
+      "zoneId": "intertidal_quagmire_trap",
+      "centerX": -25,
+      "centerZ": -60,
+      "radius": 24,
       "riskTier": "medium",
-      "rawDataValue": 28.5,
-      "rawDataUnit": "PSU Salinity (উচ্চ লবণাক্ত কাদা)"
+      "rawDataValue": 0.22,
+      "rawDataUnit": "Intertidal Quagmire & Mud Silt Obstacle"
     }
   ]
 }

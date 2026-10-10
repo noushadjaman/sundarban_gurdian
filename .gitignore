@@ -27,3 +27,12 @@
 .agents/
 sysinfo.txt
 crash_report*
+*.log
+__pycache__/
+UpgradeLog.htm
+
+# Scene Backups & Recovery
+Assets/Scenes/*backup*.unity*
+Assets/Scenes/*before_asset*.unity*
+Assets/Scenes/*WorkingBackup*.unity*
+Assets/_Recovery/

@@ -2,20 +2,20 @@ Shader "Custom/SundarbanRiverWater"
 {
     Properties
     {
-        _ShallowColor ("Shallow Water Color (Inland River)", Color) = (0.22, 0.40, 0.34, 0.65)
-        _DeepColor ("Deep Water Color (Inland River)", Color) = (0.12, 0.28, 0.24, 0.94)
-        _OceanBlueColor ("Ocean Blue Deep Color (Near Sea)", Color) = (0.08, 0.36, 0.58, 0.96)
-        _OceanShallowBlueColor ("Ocean Blue Shallow Color (Near Sea)", Color) = (0.18, 0.54, 0.68, 0.72)
+        _ShallowColor ("Shallow Water Color (Inland River)", Color) = (0.35, 0.48, 0.45, 0.20)
+        _DeepColor ("Deep Water Color (Inland River)", Color) = (0.22, 0.38, 0.40, 0.40)
+        _OceanBlueColor ("Ocean Blue Deep Color (Near Sea)", Color) = (0.15, 0.40, 0.55, 0.48)
+        _OceanShallowBlueColor ("Ocean Blue Shallow Color (Near Sea)", Color) = (0.28, 0.50, 0.60, 0.25)
         _SeaTransitionZStart ("Sea Transition Start Z (Inland)", Float) = 110.0
         _SeaTransitionZEnd ("Sea Transition End Z (Sea)", Float) = -40.0
-        _SkyReflectionColor ("Sky Reflection Color", Color) = (0.72, 0.84, 0.92, 1.0)
-        _FoamColor ("Foam / Shore Ripples", Color) = (0.80, 0.86, 0.82, 0.90)
+        _SkyReflectionColor ("Sky Reflection Color", Color) = (0.82, 0.90, 0.96, 1.0)
+        _FoamColor ("Foam / Shore Ripples", Color) = (0.80, 0.86, 0.82, 0.80)
         _FoamDistance ("Shore Blend Distance", Range(0.01, 2.0)) = 0.5
-        _Smoothness ("Smoothness", Range(0.0, 1.0)) = 0.92
+        _Smoothness ("Smoothness", Range(0.0, 1.0)) = 0.95
         _BumpMap ("Normal Map", 2D) = "bump" {}
-        _WaveSpeed ("Wave Speed (XY, ZW)", Vector) = (0.015, 0.025, -0.010, 0.018)
-        _NormalTiling ("Normal Tiling", Float) = 4.0
-        _BumpScale ("Bump Scale", Range(0.0, 2.0)) = 0.85
+        _WaveSpeed ("Wave Speed (XY, ZW)", Vector) = (0.012, 0.018, -0.008, 0.014)
+        _NormalTiling ("Normal Tiling", Float) = 5.0
+        _BumpScale ("Bump Scale", Range(0.0, 2.0)) = 0.35
     }
     SubShader
     {
@@ -124,9 +124,15 @@ Shader "Custom/SundarbanRiverWater"
                 half4 activeDeep = lerp(_DeepColor, _OceanBlueColor, seaT);
                 half4 activeShallow = lerp(_ShallowColor, _OceanShallowBlueColor, seaT);
 
-                // Reliable shore distance from UV: 0 at shoreline, 1 in deep river channel
+                // Blend vertex color from GLB water mesh if present (author's baked depth tint & transparency)
+                float vAlpha = (input.color.a > 0.001) ? input.color.a : 1.0;
+                half3 depthTint = (any(input.color.rgb > 0.01)) ? input.color.rgb * 2.5 : half3(1, 1, 1);
+
+                // Shore distance from UV or vertex alpha
                 float shoreFactor = saturate((1.0 - abs(input.uv.x - 0.5) * 2.0) * 3.5);
+                shoreFactor = max(shoreFactor, saturate(vAlpha * 1.2));
                 half4 waterCol = lerp(activeShallow, activeDeep, shoreFactor);
+                waterCol.rgb *= depthTint;
 
                 // Lighting & view direction
                 Light mainLight = GetMainLight();
@@ -155,8 +161,10 @@ Shader "Custom/SundarbanRiverWater"
                 float foamFactor = pow(1.0 - shoreFactor, 5.0);
                 finalRGB = lerp(finalRGB, _FoamColor.rgb, foamFactor * 0.50);
 
-                // Alpha: shallow water near mud edge is translucent, deep water is opaque
-                float finalAlpha = lerp(0.70, waterCol.a, shoreFactor);
+                // View-dependent transparency: look down into water = clear & transparent!
+                // Grazing angles = higher sky reflection and subtle opacity
+                float viewTransparency = lerp(activeShallow.a, activeDeep.a, shoreFactor);
+                float finalAlpha = saturate(viewTransparency + fresnel * 0.30);
 
                 return half4(finalRGB, finalAlpha);
             }
