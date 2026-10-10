@@ -25,6 +25,8 @@
 .gradle/
 .idea/
 .agents/
+.utmp/
+ProjectScreenshots/
 sysinfo.txt
 crash_report*
 *.log

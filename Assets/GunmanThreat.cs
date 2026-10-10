@@ -47,11 +47,19 @@ namespace SundarbanGuardian.Environment
         private void Awake()
         {
             initialRotation = transform.rotation;
-            audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
-            audioSource.playOnAwake = false;
-            audioSource.spatialBlend = 0.85f;
-            audioSource.minDistance = 5f;
-            audioSource.maxDistance = 50f;
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+            }
+
+            if (audioSource != null)
+            {
+                audioSource.playOnAwake = false;
+                audioSource.spatialBlend = 0.85f;
+                audioSource.minDistance = 5f;
+                audioSource.maxDistance = 50f;
+            }
 
             gunshotClip = GenerateGunshotAudioClip();
             lockWarningClip = GenerateLockWarningAudioClip();
