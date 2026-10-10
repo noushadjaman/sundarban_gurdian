@@ -63,11 +63,26 @@ namespace SundarbanGuardian.Cinematics
 
         private void Update()
         {
-            // Hotkey 'C' to start 90-Second Intense Competition Showcase
-            if (Input.GetKeyDown(KeyCode.C) && !isPlayingShowcase)
+#if ENABLE_INPUT_SYSTEM
+            try
             {
-                StartShowcase();
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb != null && kb.cKey.wasPressedThisFrame && !isPlayingShowcase)
+                {
+                    StartShowcase();
+                }
             }
+            catch (System.Exception) { }
+#else
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.C) && !isPlayingShowcase)
+                {
+                    StartShowcase();
+                }
+            }
+            catch (System.Exception) { }
+#endif
         }
 
         [ContextMenu("Start 90s Competition Showcase")]

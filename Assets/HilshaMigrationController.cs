@@ -75,14 +75,43 @@ namespace SundarbanGuardian.Player
 
         private void LoadLevel()
         {
-            string path = Path.Combine(Application.streamingAssetsPath, "Levels", levelFileName + ".json");
-            if (!File.Exists(path))
+            string json = null;
+
+            // 1. Check Resources first (instant, 100% reliable on Android APK, iOS, WebGL, Editor)
+            var textAsset = Resources.Load<TextAsset>($"Levels/{levelFileName}");
+            if (textAsset != null)
             {
-                Debug.LogError($"[HilshaMigrationController] Level file not found: {path}");
+                json = textAsset.text;
+            }
+
+            // 2. Fallback to StreamingAssets
+            if (string.IsNullOrEmpty(json))
+            {
+                string path = Path.Combine(Application.streamingAssetsPath, "Levels", levelFileName + ".json");
+                if (Application.platform == RuntimePlatform.Android)
+                {
+                    using (var uwr = UnityEngine.Networking.UnityWebRequest.Get(path))
+                    {
+                        uwr.SendWebRequest();
+                        while (!uwr.isDone) { }
+                        if (uwr.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+                        {
+                            json = uwr.downloadHandler.text;
+                        }
+                    }
+                }
+                else if (File.Exists(path))
+                {
+                    json = File.ReadAllText(path);
+                }
+            }
+
+            if (string.IsNullOrEmpty(json))
+            {
+                Debug.LogError($"[HilshaMigrationController] Level file not found: {levelFileName}");
                 return;
             }
 
-            string json = File.ReadAllText(path);
             levelData = JsonUtility.FromJson<HilshaLevelData>(json);
             currentSegmentIndex = 0;
             distanceTravelledKm = (levelData != null && levelData.corridor != null && levelData.corridor.Count > 0)

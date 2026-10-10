@@ -61,6 +61,13 @@ namespace SundarbanGuardian.Core
 
         private void Start()
         {
+            Time.timeScale = 1f;
+
+            if (string.IsNullOrEmpty(selectedSpecies))
+            {
+                selectedSpecies = PlayerPrefs.GetString("SelectedSpecies", "");
+            }
+
             if (!string.IsNullOrEmpty(selectedSpecies))
             {
                 currentSpecies = selectedSpecies;
@@ -450,6 +457,7 @@ namespace SundarbanGuardian.Core
 
         public void AdvanceToNextSpecies()
         {
+            Time.timeScale = 1f;
             if (CompetitiveRoundManager.Instance != null)
             {
                 CompetitiveRoundManager.Instance.AdvanceToNextRound();
@@ -465,12 +473,15 @@ namespace SundarbanGuardian.Core
 
                 selectedSpecies = next;
                 currentSpecies = next;
+                PlayerPrefs.SetString("SelectedSpecies", next);
+                PlayerPrefs.Save();
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
         }
 
         public void RestartLevel()
         {
+            Time.timeScale = 1f;
             if (CompetitiveRoundManager.Instance != null)
             {
                 CompetitiveRoundManager.Instance.RestartCurrentRound();

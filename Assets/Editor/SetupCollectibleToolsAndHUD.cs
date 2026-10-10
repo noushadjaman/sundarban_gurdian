@@ -143,7 +143,7 @@ namespace SundarbanGuardian.EditorTools
 
                 var pickup = itemGo.AddComponent<ToolPickupItem>();
                 pickup.toolType = sp.type;
-                pickup.amount = 1;
+                pickup.amount = (sp.type == ToolType.Seed) ? 2 : 1;
                 pickup.Ensure3DVisualAsset();
                 pickup.EnsureTriggerCollider();
 

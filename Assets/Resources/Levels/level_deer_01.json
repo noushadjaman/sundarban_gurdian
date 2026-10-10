@@ -1,0 +1,76 @@
+{
+  "levelId": "level_deer_01",
+  "speciesId": "deer",
+  "realCoordinateName": "Northern Forest Ridge to Kotka Ocean Sanctuary",
+  "latitude": 22.40,
+  "longitude": 89.65,
+  "dataSource": "MOD13Q1 250m NDVI Composite & Bangladesh Forest Dept Field Survey",
+  "factTextBn": "The Spotted Deer (Axis axis) begins its migration from the northern jungle edge heading south toward the open ocean coast. Dodge armed poachers, jump over concealed wire snares, evade stalking crocodiles, and sprint across mudflats to reach the ocean-side sweetwater sanctuary!",
+  "startZone": { "centerX": -35, "centerZ": 245, "radius": 10 },
+  "goalZone": { "centerX": -30, "centerZ": -95, "radius": 22 },
+  "hazardZones": [
+    {
+      "zoneId": "north_hunter_gunman_patrol",
+      "centerX": -32,
+      "centerZ": 220,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 50.0,
+      "rawDataUnit": "Armed Hunter Gunman Scoped Rifle Threat"
+    },
+    {
+      "zoneId": "deforestation_timber_felling_north",
+      "centerX": -25,
+      "centerZ": 175,
+      "radius": 26,
+      "riskTier": "high",
+      "rawDataValue": 0.14,
+      "rawDataUnit": "NDVI Deforested Logging Clearing & Heat Stress"
+    },
+    {
+      "zoneId": "concealed_deer_snare_trail",
+      "centerX": -28,
+      "centerZ": 130,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 0.18,
+      "rawDataUnit": "Illegal Wire Snares & Deer Foot Traps"
+    },
+    {
+      "zoneId": "deforestation_logging_basin_mid",
+      "centerX": 25,
+      "centerZ": 90,
+      "radius": 26,
+      "riskTier": "high",
+      "rawDataValue": 0.12,
+      "rawDataUnit": "NDVI Illegal Clear-Cut Timber Basin"
+    },
+    {
+      "zoneId": "deforestation_clearing_south",
+      "centerX": -18,
+      "centerZ": 20,
+      "radius": 26,
+      "riskTier": "high",
+      "rawDataValue": 0.15,
+      "rawDataUnit": "NDVI Degraded Mangrove Wasteland & Canopy Loss"
+    },
+    {
+      "zoneId": "coastal_hunter_ambush_outpost",
+      "centerX": 22,
+      "centerZ": -20,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 50.0,
+      "rawDataUnit": "Armed Poacher Sentry & Red Laser Sight Lock"
+    },
+    {
+      "zoneId": "intertidal_quagmire_trap",
+      "centerX": -25,
+      "centerZ": -60,
+      "radius": 24,
+      "riskTier": "medium",
+      "rawDataValue": 0.22,
+      "rawDataUnit": "Intertidal Quagmire & Mud Silt Obstacle"
+    }
+  ]
+}

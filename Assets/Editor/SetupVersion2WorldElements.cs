@@ -98,59 +98,41 @@ namespace SundarbanGuardian.Editor
             if (existing != null) Undo.DestroyObjectImmediate(existing);
 
             var root = new GameObject(rootName);
+            // Scarce, strategic mangrove seed spawns (keeps world uncluttered, realistic conservation challenges)
             Vector3[] seedClusters = new Vector3[]
             {
-                new Vector3(-32f, 0f, 235f),
-                new Vector3(-30f, 0f, 215f),
-                new Vector3(-36f, 0f, 195f),
                 new Vector3(-24f, 0f, 180f),
-                new Vector3(-28f, 0f, 160f),
-                new Vector3(-18f, 0f, 140f),
-                new Vector3(-32f, 0f, 120f),
                 new Vector3( 20f, 0f, 100f),
-                new Vector3( 24f, 0f,  85f),
-                new Vector3(-15f, 0f,  70f),
-                new Vector3(-22f, 0f,  50f),
-                new Vector3(-16f, 0f,  30f),
-                new Vector3(-20f, 0f,  10f),
-                new Vector3(-25f, 0f, -10f),
-                new Vector3( 10f, 0f, -30f),
-                new Vector3(-22f, 0f, -50f),
-                new Vector3(-28f, 0f, -75f)
+                new Vector3(-16f, 0f,  30f)
             };
 
             int seedIndex = 0;
             foreach (var cluster in seedClusters)
             {
-                // Spawn 2 seeds per cluster (total 34 seeds on ground)
-                for (int s = 0; s < 2; s++)
+                seedIndex++;
+                Vector3 pos = cluster;
+
+                if (Physics.Raycast(pos + Vector3.up * 35f, Vector3.down, out RaycastHit hit, 60f, ~0, QueryTriggerInteraction.Ignore))
                 {
-                    seedIndex++;
-                    Vector3 offset = new Vector3(Random.Range(-1.5f, 1.5f), 0f, Random.Range(-1.5f, 1.5f));
-                    Vector3 pos = cluster + offset;
-
-                    if (Physics.Raycast(pos + Vector3.up * 35f, Vector3.down, out RaycastHit hit, 60f, ~0, QueryTriggerInteraction.Ignore))
-                    {
-                        pos.y = hit.point.y + 0.35f;
-                    }
-                    else
-                    {
-                        pos.y = 0.35f;
-                    }
-
-                    var seedGo = new GameObject($"Seed_Pickup_V2_{seedIndex:D2}");
-                    seedGo.transform.SetParent(root.transform, true);
-                    seedGo.transform.position = pos;
-
-                    var pickup = seedGo.AddComponent<ToolPickupItem>();
-                    pickup.toolType = ToolType.Seed;
-                    pickup.amount = 1;
-                    pickup.Ensure3DVisualAsset();
-                    pickup.EnsureTriggerCollider();
+                    pos.y = hit.point.y + 0.35f;
                 }
+                else
+                {
+                    pos.y = 0.35f;
+                }
+
+                var seedGo = new GameObject($"Seed_Pickup_V2_{seedIndex:D2}");
+                seedGo.transform.SetParent(root.transform, true);
+                seedGo.transform.position = pos;
+
+                var pickup = seedGo.AddComponent<ToolPickupItem>();
+                pickup.toolType = ToolType.Seed;
+                pickup.amount = 2; // Each pouch provides 2 mangrove seeds
+                pickup.Ensure3DVisualAsset();
+                pickup.EnsureTriggerCollider();
             }
 
-            Debug.Log($"<color=green>[SetupV2] Placed {seedIndex} Mangrove Seed pickups for Deer Level 2 mission (Target: 3 zones x 5 seeds = 15 needed).</color>");
+            Debug.Log($"<color=green>[SetupV2] Placed {seedIndex} scarce Mangrove Seed pickups for Deer Level 2 mission.</color>");
         }
 
         private static void SetupDolphinRiverNetsAndPollution()

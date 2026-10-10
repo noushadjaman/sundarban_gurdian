@@ -1,0 +1,76 @@
+{
+  "levelId": "level_tiger_01",
+  "speciesId": "tiger",
+  "realCoordinateName": "Chandpai Deep Forest Ridge to Kotka Ocean Coast",
+  "latitude": 22.42,
+  "longitude": 89.68,
+  "dataSource": "NASA MODIS MOD13Q1 NDVI & Bangladesh Wildlife Trust Census",
+  "factTextBn": "The Royal Bengal Tiger embarks on an epic journey heading south to the ocean coast. Destroy 10 poacher wire traps and reach the Kotka Ocean Sanctuary to complete Level 1!",
+  "startZone": { "centerX": -45, "centerZ": 250, "radius": 10 },
+  "goalZone": { "centerX": 35, "centerZ": -95, "radius": 22 },
+  "hazardZones": [
+    {
+      "zoneId": "north_poacher_gunman_camp",
+      "centerX": -32,
+      "centerZ": 225,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 50.0,
+      "rawDataUnit": "Armed Poacher Gunman Patrol & Laser Sight Ambush"
+    },
+    {
+      "zoneId": "deforestation_canopy_collapse",
+      "centerX": 25,
+      "centerZ": 185,
+      "radius": 26,
+      "riskTier": "high",
+      "rawDataValue": 0.12,
+      "rawDataUnit": "NDVI Severe Deforested Logging Wasteland"
+    },
+    {
+      "zoneId": "logging_basin_gunman_outpost",
+      "centerX": -35,
+      "centerZ": 135,
+      "radius": 26,
+      "riskTier": "high",
+      "rawDataValue": 50.0,
+      "rawDataUnit": "Poacher Gunman Sentry & Tree Felling Basin"
+    },
+    {
+      "zoneId": "hypersaline_mudflat_basin",
+      "centerX": 36,
+      "centerZ": 85,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 32.5,
+      "rawDataUnit": "PSU Extreme Saline Mudflat & Canopy Dieback"
+    },
+    {
+      "zoneId": "crocodile_riverbank_ambush",
+      "centerX": -15,
+      "centerZ": 35,
+      "radius": 22,
+      "riskTier": "high",
+      "rawDataValue": 45.0,
+      "rawDataUnit": "Apex Saltwater Crocodile Crossing"
+    },
+    {
+      "zoneId": "coastal_patrol_trawler_lane",
+      "centerX": 20,
+      "centerZ": -25,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 85.0,
+      "rawDataUnit": "Motorized Trawler Acoustic Hazard & Poacher Ambush"
+    },
+    {
+      "zoneId": "southern_quagmire_approach",
+      "centerX": -30,
+      "centerZ": -65,
+      "radius": 24,
+      "riskTier": "high",
+      "rawDataValue": 0.15,
+      "rawDataUnit": "Concealed Steel Wire Snare Field & Hunter Outpost"
+    }
+  ]
+}

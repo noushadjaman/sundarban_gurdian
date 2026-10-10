@@ -239,10 +239,10 @@ namespace SundarbanGuardian.Player
 
         private void LateUpdate()
         {
-            if (!isInitialized)
+            if (!isInitialized || baseVertices == null || vertexBindings == null || deformedVertices == null)
             {
                 Initialize();
-                if (!isInitialized) return;
+                if (!isInitialized || baseVertices == null || vertexBindings == null || deformedVertices == null) return;
             }
 
             float dt = Application.isPlaying ? Time.deltaTime : 0.016f;
@@ -347,6 +347,11 @@ namespace SundarbanGuardian.Player
             Quaternion rBR_Hoof = rBR_Hock * Quaternion.Euler(hoofBR, 0f, 0f);
 
             // ── 7. Transform Leg Vertices ──
+            if (baseVertices == null || vertexBindings == null || deformedVertices == null || vertexBindings.Length != baseVertices.Length)
+            {
+                return;
+            }
+
             for (int i = 0; i < baseVertices.Length; i++)
             {
                 var binding = vertexBindings[i];

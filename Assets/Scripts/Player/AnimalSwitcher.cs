@@ -119,10 +119,11 @@ namespace SundarbanGuardian.Player
 
         public void SwitchToTiger()
         {
+            Time.timeScale = 1f;
             if (CompetitiveRoundManager.Instance != null)
             {
-                CompetitiveRoundManager.Instance.LaunchRound(0);
                 activeSpecies = "Tiger";
+                CompetitiveRoundManager.Instance.LaunchRound(0, forceSceneReload: true);
                 return;
             }
 
@@ -142,10 +143,11 @@ namespace SundarbanGuardian.Player
 
         public void SwitchToDeer()
         {
+            Time.timeScale = 1f;
             if (CompetitiveRoundManager.Instance != null)
             {
-                CompetitiveRoundManager.Instance.LaunchRound(1);
                 activeSpecies = "Deer";
+                CompetitiveRoundManager.Instance.LaunchRound(1, forceSceneReload: true);
                 return;
             }
 
@@ -165,10 +167,11 @@ namespace SundarbanGuardian.Player
 
         public void SwitchToDolphin()
         {
+            Time.timeScale = 1f;
             if (CompetitiveRoundManager.Instance != null)
             {
-                CompetitiveRoundManager.Instance.LaunchRound(2);
                 activeSpecies = "Dolphin";
+                CompetitiveRoundManager.Instance.LaunchRound(2, forceSceneReload: true);
                 return;
             }
 
@@ -188,10 +191,11 @@ namespace SundarbanGuardian.Player
 
         public void SwitchToHilsha()
         {
+            Time.timeScale = 1f;
             if (CompetitiveRoundManager.Instance != null)
             {
-                CompetitiveRoundManager.Instance.LaunchRound(3);
                 activeSpecies = "Hilsha";
+                CompetitiveRoundManager.Instance.LaunchRound(3, forceSceneReload: true);
                 return;
             }
 

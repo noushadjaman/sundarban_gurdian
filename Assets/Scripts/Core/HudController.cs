@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using SundarbanGuardian.Data;
 using SundarbanGuardian.Inventory;
 using SundarbanGuardian.Environment;
@@ -1499,25 +1500,11 @@ namespace SundarbanGuardian.Core
                 SpawnMinimapGoalMarker(35f, -95f);
             }
 
-            // 2. Green Healing Sanctuaries (Glades)
-            var glades = FindObjectsByType<SundarbanGuardian.Environment.HealingZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            foreach (var hz in glades)
-            {
-                SpawnMinimapGladeMarker(hz.transform.position.x, hz.transform.position.z);
-            }
-
-            // 3. Collectible Tool Pickups on Minimap (small crisp 3D icons)
+            // 2. Collectible Tool Pickups on Minimap (shown as subtle, tiny clean dots)
             var tools = FindObjectsByType<ToolPickupItem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             foreach (var tp in tools)
             {
                 SpawnMinimapToolMarker(tp);
-            }
-
-            // 4. Collectible Food Items on Minimap
-            var foods = FindObjectsByType<SundarbanGuardian.Environment.FoodItem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            foreach (var f in foods)
-            {
-                SpawnMinimapFoodMarker(f);
             }
 
             // Initial update if player exists
@@ -1531,10 +1518,10 @@ namespace SundarbanGuardian.Core
         {
             Transform parentTf = markerLayer != null ? markerLayer.transform : (minimapMaskRect != null ? minimapMaskRect.transform : mapContentRect.transform);
 
-            // Clean, uncluttered NASA Hazard Zone marker scaled cleanly
+            // Only Danger Zones are shown as prominent BIG CIRCLES on the radar
             float worldWidth = mapWorldMaxX - mapWorldMinX;
-            float worldDiam = Mathf.Max(worldRadius * 2f, 20f);
-            float pixelDiameter = Mathf.Clamp((worldDiam / worldWidth / minimapCropSize) * minimapFrameSize, 18f, 30f);
+            float worldDiam = Mathf.Max(worldRadius * 2f, 32f);
+            float pixelDiameter = Mathf.Clamp((worldDiam / (worldWidth * minimapCropSize)) * minimapFrameSize, 65f, 130f);
 
             GameObject zoneObj = new GameObject($"DangerZone_{riskTier}", typeof(RectTransform));
             zoneObj.transform.SetParent(parentTf, false);
@@ -1570,7 +1557,7 @@ namespace SundarbanGuardian.Core
             var fillSprite = GetOrCreateCircleSprite(128, false);
             var ringSprite = GetOrCreateCircleSprite(128, true, 0.085f);
 
-            // 1. Semi-transparent Fill Circle
+            // 1. Semi-transparent Big Circle Fill
             var fillGo = new GameObject("Fill_Circle", typeof(RectTransform), typeof(Image));
             fillGo.transform.SetParent(zoneObj.transform, false);
             var fillRt = fillGo.GetComponent<RectTransform>();
@@ -1579,7 +1566,7 @@ namespace SundarbanGuardian.Core
             fillRt.sizeDelta = Vector2.zero;
             var fillImg = fillGo.GetComponent<Image>();
             fillImg.sprite = fillSprite;
-            fillImg.color = new Color(mainColor.r, mainColor.g, mainColor.b, isPolluted ? 0.38f : 0.24f);
+            fillImg.color = new Color(mainColor.r, mainColor.g, mainColor.b, isPolluted ? 0.32f : 0.22f);
             fillImg.raycastTarget = false;
 
             // 2. Bright Outer Border Ring
@@ -1605,47 +1592,6 @@ namespace SundarbanGuardian.Core
             pulseImg.sprite = ringSprite;
             pulseImg.color = new Color(mainColor.r, mainColor.g, mainColor.b, 0.50f);
             pulseImg.raycastTarget = false;
-
-            // 4. Center Warning Core
-            var coreGo = new GameObject("Center_Dot", typeof(RectTransform), typeof(Image));
-            coreGo.transform.SetParent(zoneObj.transform, false);
-            var coreRt = coreGo.GetComponent<RectTransform>();
-            coreRt.anchorMin = new Vector2(0.5f, 0.5f);
-            coreRt.anchorMax = new Vector2(0.5f, 0.5f);
-            coreRt.sizeDelta = new Vector2(7f, 7f);
-            var coreImg = coreGo.GetComponent<Image>();
-            coreImg.sprite = fillSprite;
-            coreImg.color = new Color(1f, 1f, 1f, 0.95f);
-            coreImg.raycastTarget = false;
-            var coreOutl = coreGo.AddComponent<Outline>();
-            coreOutl.effectColor = new Color(mainColor.r * 0.7f, 0f, mainColor.b * 0.7f, 0.95f);
-            coreOutl.effectDistance = new Vector2(1f, -1f);
-
-            // 5. Danger Zone Tactical Label
-            Font font = Resources.Load<Font>("Fonts/SegoeUI");
-            if (font == null)
-            {
-                try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); }
-                catch { }
-            }
-            var labelGo = new GameObject("Danger_Label", typeof(RectTransform), typeof(Text));
-            labelGo.transform.SetParent(zoneObj.transform, false);
-            var labelRt = labelGo.GetComponent<RectTransform>();
-            labelRt.anchorMin = new Vector2(0.5f, 1f);
-            labelRt.anchorMax = new Vector2(0.5f, 1f);
-            labelRt.pivot = new Vector2(0.5f, 0f);
-            labelRt.anchoredPosition = new Vector2(0f, 1f);
-            labelRt.sizeDelta = new Vector2(95f, 14f);
-            var labelTxt = labelGo.GetComponent<Text>();
-            if (font != null) labelTxt.font = font;
-            labelTxt.text = isPolluted ? "POLLUTED WATER" : "DANGER ZONE";
-            labelTxt.fontSize = 8;
-            labelTxt.fontStyle = FontStyle.Bold;
-            labelTxt.alignment = TextAnchor.MiddleCenter;
-            labelTxt.color = isPolluted ? new Color(0.85f, 0.50f, 1.0f, 0.98f) : new Color(1f, 0.35f, 0.35f, 0.95f);
-            var labelOutl = labelGo.AddComponent<Outline>();
-            labelOutl.effectColor = new Color(0.1f, 0f, 0.1f, 0.95f);
-            labelOutl.effectDistance = new Vector2(1f, -1f);
 
             activeMinimapMarkers.Add(new MinimapMarkerInfo
             {
@@ -1744,46 +1690,46 @@ namespace SundarbanGuardian.Core
             Transform parentTf = markerLayer != null ? markerLayer.transform : (minimapMaskRect != null ? minimapMaskRect.transform : (mapContentRect != null ? mapContentRect.transform : null));
             if (parentTf == null) return;
 
-            GameObject toolMarkerGo = new GameObject($"Minimap_Tool_{item.toolType}", typeof(RectTransform), typeof(Image));
+            // Minimap marker for tools is strictly a clean, tiny 6px colored dot (no bulky icons or badges)
+            GameObject toolMarkerGo = new GameObject($"Minimap_Tool_Dot_{item.toolType}", typeof(RectTransform), typeof(Image));
             toolMarkerGo.transform.SetParent(parentTf, false);
             var rt = toolMarkerGo.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(20f, 20f); // small crisp pill
+            rt.sizeDelta = new Vector2(6f, 6f);
             rt.anchorMin = new Vector2(0.5f, 0.5f);
             rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = Vector2.zero;
 
-            // Background circular pill for high contrast against satellite terrain/water
-            var bgImg = toolMarkerGo.GetComponent<Image>();
-            bgImg.sprite = GetOrCreateCircleSprite(64, false);
-            bgImg.color = new Color(0.04f, 0.08f, 0.12f, 0.88f);
-            bgImg.raycastTarget = false;
+            var dotImg = toolMarkerGo.GetComponent<Image>();
+            dotImg.sprite = GetOrCreateCircleSprite(32, false);
+            dotImg.raycastTarget = false;
 
+            // Clean, distinctive dot color by tool type
+            Color dotColor;
+            switch (item.toolType)
+            {
+                case ToolType.Seed:
+                    dotColor = new Color(0.20f, 0.95f, 0.45f, 0.95f); // Crisp Emerald Green
+                    break;
+                case ToolType.NetCutter:
+                    dotColor = new Color(1.00f, 0.85f, 0.20f, 0.95f); // Vibrant Yellow
+                    break;
+                case ToolType.CleaningLiquid:
+                    dotColor = new Color(0.18f, 0.88f, 1.00f, 0.95f); // Aqua Cyan
+                    break;
+                case ToolType.TrapDestroyer:
+                    dotColor = new Color(1.00f, 0.52f, 0.15f, 0.95f); // Warm Orange
+                    break;
+                default:
+                    dotColor = new Color(0.95f, 0.95f, 0.95f, 0.95f);
+                    break;
+            }
+            dotImg.color = dotColor;
+
+            // Crisp 1px outline for contrast over dark mangroves & light water
             var outline = toolMarkerGo.AddComponent<Outline>();
-            outline.effectColor = ToolInfo.GetThemeColor(item.toolType);
-            outline.effectDistance = new Vector2(1.5f, -1.5f);
-
-            // Child crisp tool icon
-            GameObject iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
-            iconGo.transform.SetParent(toolMarkerGo.transform, false);
-            var iconImg = iconGo.GetComponent<Image>();
-            int tIdx = (int)item.toolType;
-            if (cachedToolSprites != null && tIdx >= 0 && tIdx < cachedToolSprites.Length && cachedToolSprites[tIdx] != null)
-            {
-                iconImg.sprite = cachedToolSprites[tIdx];
-                iconImg.preserveAspect = true;
-                iconImg.color = Color.white;
-            }
-            else
-            {
-                iconImg.color = ToolInfo.GetThemeColor(item.toolType);
-            }
-            iconImg.raycastTarget = false;
-            var iRt = iconGo.GetComponent<RectTransform>();
-            iRt.anchorMin = Vector2.zero;
-            iRt.anchorMax = Vector2.one;
-            iRt.offsetMin = new Vector2(2f, 2f);
-            iRt.offsetMax = new Vector2(-2f, -2f);
+            outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            outline.effectDistance = new Vector2(1f, -1f);
 
             activeMinimapMarkers.Add(new MinimapMarkerInfo
             {
@@ -1819,69 +1765,11 @@ namespace SundarbanGuardian.Core
 
         private void SpawnMinimapFoodMarker(SundarbanGuardian.Environment.FoodItem item)
         {
-            if (item == null) return;
-            Transform parentTf = markerLayer != null ? markerLayer.transform : (minimapMaskRect != null ? minimapMaskRect.transform : (mapContentRect != null ? mapContentRect.transform : null));
-            if (parentTf == null) return;
-
-            GameObject foodMarkerGo = new GameObject("Minimap_Food_Item", typeof(RectTransform), typeof(Image));
-            foodMarkerGo.transform.SetParent(parentTf, false);
-            var rt = foodMarkerGo.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(18f, 18f);
-            rt.anchorMin = new Vector2(0.5f, 0.5f);
-            rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
-
-            var bgImg = foodMarkerGo.GetComponent<Image>();
-            bgImg.sprite = GetOrCreateCircleSprite(64, false);
-            bgImg.color = new Color(0.06f, 0.16f, 0.08f, 0.92f);
-            bgImg.raycastTarget = false;
-
-            var outline = foodMarkerGo.AddComponent<Outline>();
-            outline.effectColor = new Color(1.0f, 0.80f, 0.25f, 1.0f); // warm golden rim
-            outline.effectDistance = new Vector2(1.2f, -1.2f);
-
-            GameObject txtGo = new GameObject("Icon", typeof(RectTransform), typeof(Text));
-            txtGo.transform.SetParent(foodMarkerGo.transform, false);
-            var txt = txtGo.GetComponent<Text>();
-            txt.font = cachedDefaultFont;
-            txt.fontSize = 11;
-            txt.alignment = TextAnchor.MiddleCenter;
-            txt.text = "🍗";
-            txt.raycastTarget = false;
-            var tRt = txtGo.GetComponent<RectTransform>();
-            tRt.anchorMin = Vector2.zero;
-            tRt.anchorMax = Vector2.one;
-            tRt.sizeDelta = Vector2.zero;
-
-            activeMinimapMarkers.Add(new MinimapMarkerInfo
-            {
-                rectTransform = rt,
-                worldX = item.transform.position.x,
-                worldZ = item.transform.position.z,
-                markerType = "food"
-            });
+            // Minimap is reserved exclusively for Danger Zones (big circles) and limited Tools (dots)
         }
 
         private void RemoveMinimapFoodMarker(SundarbanGuardian.Environment.FoodItem item)
         {
-            if (item == null) return;
-            for (int i = activeMinimapMarkers.Count - 1; i >= 0; i--)
-            {
-                var m = activeMinimapMarkers[i];
-                if (m != null && m.markerType == "food" &&
-                    Mathf.Abs(m.worldX - item.transform.position.x) < 1.5f &&
-                    Mathf.Abs(m.worldZ - item.transform.position.z) < 1.5f)
-                {
-                    if (m.rectTransform != null)
-                    {
-                        if (Application.isPlaying) Destroy(m.rectTransform.gameObject);
-                        else DestroyImmediate(m.rectTransform.gameObject);
-                    }
-                    activeMinimapMarkers.RemoveAt(i);
-                    break;
-                }
-            }
         }
 
         private void BuildTopLeftHealthBar(Transform parent, Font font)
@@ -2167,6 +2055,39 @@ namespace SundarbanGuardian.Core
             citRt.anchoredPosition = Vector2.zero;
             citRt.sizeDelta = Vector2.zero;
 
+            // Top-Right Skip / Close Button
+            GameObject btnSkipBriefingGo = new GameObject("Btn_Skip_Briefing", typeof(RectTransform), typeof(Image), typeof(Button));
+            btnSkipBriefingGo.transform.SetParent(factCardPanel.transform, false);
+            var bskRt = btnSkipBriefingGo.GetComponent<RectTransform>();
+            bskRt.anchorMin = new Vector2(0.85f, 0.915f);
+            bskRt.anchorMax = new Vector2(0.97f, 0.975f);
+            bskRt.anchoredPosition = Vector2.zero;
+            bskRt.sizeDelta = Vector2.zero;
+            btnSkipBriefingGo.GetComponent<Image>().color = new Color(0.18f, 0.22f, 0.28f, 0.92f);
+            var bskOutline = btnSkipBriefingGo.AddComponent<Outline>();
+            bskOutline.effectColor = new Color(0.6f, 0.7f, 0.8f, 0.9f);
+            bskOutline.effectDistance = new Vector2(1.2f, -1.2f);
+            var bskBtn = btnSkipBriefingGo.GetComponent<Button>();
+            bskBtn.onClick.AddListener(() => {
+                if (factCardPanel != null) factCardPanel.SetActive(false);
+                Time.timeScale = 1f;
+            });
+
+            GameObject bskTxtGo = new GameObject("Text", typeof(RectTransform), typeof(Text));
+            bskTxtGo.transform.SetParent(btnSkipBriefingGo.transform, false);
+            var bskt = bskTxtGo.GetComponent<Text>();
+            bskt.font = font;
+            bskt.fontSize = 13;
+            bskt.fontStyle = FontStyle.Bold;
+            bskt.alignment = TextAnchor.MiddleCenter;
+            bskt.color = new Color(0.9f, 0.95f, 1f);
+            bskt.text = "SKIP ✕";
+            bskt.raycastTarget = false;
+            var bsktRt = bskTxtGo.GetComponent<RectTransform>();
+            bsktRt.anchorMin = Vector2.zero;
+            bsktRt.anchorMax = Vector2.one;
+            bsktRt.sizeDelta = Vector2.zero;
+
             // Start Mission Button (Pre-Level Briefing)
             GameObject btnStartGo = new GameObject("Btn_Start_Mission", typeof(RectTransform), typeof(Image), typeof(Button));
             btnStartGo.transform.SetParent(factCardPanel.transform, false);
@@ -2182,6 +2103,7 @@ namespace SundarbanGuardian.Core
             startMissionButton = btnStartGo.GetComponent<Button>();
             startMissionButton.onClick.AddListener(() => {
                 if (factCardPanel != null) factCardPanel.SetActive(false);
+                Time.timeScale = 1f;
             });
 
             GameObject btnStartTextGo = new GameObject("Text", typeof(RectTransform), typeof(Text));
@@ -2210,7 +2132,11 @@ namespace SundarbanGuardian.Core
             btnNextGo.GetComponent<Image>().color = new Color(0.18f, 0.68f, 0.38f, 0.95f);
             nextLevelButton = btnNextGo.GetComponent<Button>();
             nextLevelButton.onClick.AddListener(() => {
+                if (factCardPanel != null) factCardPanel.SetActive(false);
+                Time.timeScale = 1f;
                 if (gameManager != null) gameManager.AdvanceToNextSpecies();
+                else if (CompetitiveRoundManager.Instance != null) CompetitiveRoundManager.Instance.AdvanceToNextRound();
+                else SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             });
 
             GameObject btnNextTextGo = new GameObject("Text", typeof(RectTransform), typeof(Text));
@@ -2239,7 +2165,11 @@ namespace SundarbanGuardian.Core
             btnReplayGo.GetComponent<Image>().color = new Color(0.20f, 0.24f, 0.28f, 0.95f);
             restartButton = btnReplayGo.GetComponent<Button>();
             restartButton.onClick.AddListener(() => {
+                if (factCardPanel != null) factCardPanel.SetActive(false);
+                Time.timeScale = 1f;
                 if (gameManager != null) gameManager.RestartLevel();
+                else if (CompetitiveRoundManager.Instance != null) CompetitiveRoundManager.Instance.RestartCurrentRound();
+                else SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             });
 
             GameObject btnReplayTextGo = new GameObject("Text", typeof(RectTransform), typeof(Text));
@@ -5124,9 +5054,26 @@ namespace SundarbanGuardian.Core
             btnNextRoundAction.onClick.AddListener(() =>
             {
                 CloseRoundResultsModal();
+                Time.timeScale = 1f;
                 if (CompetitiveRoundManager.Instance != null)
                 {
-                    CompetitiveRoundManager.Instance.AdvanceToNextRound();
+                    if (CompetitiveRoundManager.ActiveRoundIndex >= 3)
+                    {
+                        // Tournament round 4 complete, wrap to round 0
+                        CompetitiveRoundManager.Instance.LaunchRound(0, forceSceneReload: true);
+                    }
+                    else
+                    {
+                        CompetitiveRoundManager.Instance.AdvanceToNextRound();
+                    }
+                }
+                else if (gameManager != null)
+                {
+                    gameManager.AdvanceToNextSpecies();
+                }
+                else
+                {
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
                 }
             });
 
@@ -5158,9 +5105,18 @@ namespace SundarbanGuardian.Core
             btnRetryRoundAction.onClick.AddListener(() =>
             {
                 CloseRoundResultsModal();
+                Time.timeScale = 1f;
                 if (CompetitiveRoundManager.Instance != null)
                 {
                     CompetitiveRoundManager.Instance.RestartCurrentRound();
+                }
+                else if (gameManager != null)
+                {
+                    gameManager.RestartLevel();
+                }
+                else
+                {
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
                 }
             });
 
@@ -5386,9 +5342,14 @@ namespace SundarbanGuardian.Core
             btnRestartTourneyAction.onClick.AddListener(() =>
             {
                 CloseChampionshipPodium();
+                Time.timeScale = 1f;
                 if (CompetitiveRoundManager.Instance != null)
                 {
-                    CompetitiveRoundManager.Instance.LaunchRound(0);
+                    CompetitiveRoundManager.Instance.LaunchRound(0, forceSceneReload: true);
+                }
+                else
+                {
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
                 }
             });
 
@@ -5898,9 +5859,14 @@ namespace SundarbanGuardian.Core
                 playBtn.onClick.AddListener(() =>
                 {
                     CloseRoundSelectorModal();
+                    Time.timeScale = 1f;
                     if (CompetitiveRoundManager.Instance != null)
                     {
-                        CompetitiveRoundManager.Instance.LaunchRound(rIndex);
+                        CompetitiveRoundManager.Instance.LaunchRound(rIndex, forceSceneReload: true);
+                    }
+                    else
+                    {
+                        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
                     }
                 });
 

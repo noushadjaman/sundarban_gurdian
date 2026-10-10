@@ -107,6 +107,25 @@ namespace SundarbanGuardian.UI
             LoadFont();
             LoadBackgroundTextures();
             LoadUISprites();
+
+            // Deduplicate any Intro_Data_Canvas in the scene
+            var allCanvases = Resources.FindObjectsOfTypeAll<Canvas>();
+            GameObject primaryIntro = null;
+            foreach (var c in allCanvases)
+            {
+                if (c != null && c.gameObject != null && c.gameObject.name == "Intro_Data_Canvas" && c.gameObject.scene.isLoaded)
+                {
+                    if (primaryIntro == null)
+                    {
+                        primaryIntro = c.gameObject;
+                    }
+                    else
+                    {
+                        Destroy(c.gameObject);
+                    }
+                }
+            }
+
             EnsureUIBuilt();
         }
 
@@ -119,7 +138,15 @@ namespace SundarbanGuardian.UI
             }
             else
             {
+                if (canvasGroup != null)
+                {
+                    canvasGroup.alpha = 0f;
+                    canvasGroup.blocksRaycasts = false;
+                    canvasGroup.interactable = false;
+                }
                 if (introCanvas != null) introCanvas.gameObject.SetActive(false);
+                IsIntroActive = false;
+                Time.timeScale = 1f;
             }
         }
 
@@ -314,6 +341,13 @@ namespace SundarbanGuardian.UI
                 canvasGroup.interactable = true;
             }
 
+            if (btnSkip != null)
+            {
+                btnSkip.transform.SetAsLastSibling();
+                var sImg = btnSkip.GetComponent<Image>();
+                if (sImg != null) sImg.raycastTarget = true;
+            }
+
             ShowSlide(0);
         }
 
@@ -321,7 +355,43 @@ namespace SundarbanGuardian.UI
         {
             PlayerPrefs.SetInt("HasSeenIntroDataVideo", 1);
             PlayerPrefs.Save();
-            StartCoroutine(FadeOutAndFinish());
+
+            if (currentSlideAnimCoroutine != null) StopCoroutine(currentSlideAnimCoroutine);
+            if (autoAdvanceCoroutine != null) StopCoroutine(autoAdvanceCoroutine);
+            if (slideTransitionCoroutine != null) StopCoroutine(slideTransitionCoroutine);
+            if (kenBurnsCoroutine != null) StopCoroutine(kenBurnsCoroutine);
+
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
+                canvasGroup.blocksRaycasts = false;
+                canvasGroup.interactable = false;
+            }
+
+            if (introCanvas != null)
+            {
+                introCanvas.gameObject.SetActive(false);
+            }
+
+            // Also ensure any other Intro_Data_Canvas in the scene is disabled and non-blocking
+            var allCanvases = Resources.FindObjectsOfTypeAll<Canvas>();
+            foreach (var c in allCanvases)
+            {
+                if (c != null && c.gameObject != null && c.gameObject.name == "Intro_Data_Canvas" && c.gameObject.scene.isLoaded)
+                {
+                    c.gameObject.SetActive(false);
+                    var cg = c.GetComponent<CanvasGroup>();
+                    if (cg != null)
+                    {
+                        cg.alpha = 0f;
+                        cg.blocksRaycasts = false;
+                        cg.interactable = false;
+                    }
+                }
+            }
+
+            IsIntroActive = false;
+            Time.timeScale = 1f;
         }
 
         public void NextSlide()
@@ -568,6 +638,7 @@ namespace SundarbanGuardian.UI
                 btnSkip.onClick.AddListener(SkipIntro);
                 var img = btnSkip.GetComponent<Image>();
                 if (img != null) img.raycastTarget = true;
+                btnSkip.transform.SetAsLastSibling();
             }
         }
 

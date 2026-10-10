@@ -355,15 +355,19 @@ namespace SundarbanGuardian.Core
         }
 
         /// <summary>
-        /// Launch a specific round seamlessly with dynamic in-scene transition.
+        /// Launch a specific round cleanly by resetting time and reloading the scene with the new species.
         /// </summary>
-        public void LaunchRound(int roundIndex, bool forceSceneReload = false)
+        public void LaunchRound(int roundIndex, bool forceSceneReload = true)
         {
+            Time.timeScale = 1f;
             if (roundIndex < 0 || roundIndex >= rounds.Length) roundIndex = 0;
             ActiveRoundIndex = roundIndex;
             RoundConfig targetConfig = rounds[roundIndex];
 
             GameManager.selectedSpecies = targetConfig.speciesKey;
+            PlayerPrefs.SetString("SelectedSpecies", targetConfig.speciesKey);
+            PlayerPrefs.SetInt($"Round_{roundIndex}_Unlocked", 1);
+            PlayerPrefs.Save();
 
             if (forceSceneReload)
             {
@@ -371,7 +375,7 @@ namespace SundarbanGuardian.Core
                 return;
             }
 
-            // In-Scene Seamless Transition
+            // In-Scene Seamless Transition fallback
             var gm = FindAnyObjectByType<GameManager>();
             if (gm != null)
             {
@@ -387,9 +391,10 @@ namespace SundarbanGuardian.Core
         /// </summary>
         public void AdvanceToNextRound()
         {
+            Time.timeScale = 1f;
             if (ActiveRoundIndex < rounds.Length - 1)
             {
-                LaunchRound(ActiveRoundIndex + 1);
+                LaunchRound(ActiveRoundIndex + 1, forceSceneReload: true);
             }
             else
             {
@@ -403,7 +408,8 @@ namespace SundarbanGuardian.Core
         /// </summary>
         public void RestartCurrentRound()
         {
-            LaunchRound(ActiveRoundIndex);
+            Time.timeScale = 1f;
+            LaunchRound(ActiveRoundIndex, forceSceneReload: true);
         }
 
         public void FailCurrentRound()

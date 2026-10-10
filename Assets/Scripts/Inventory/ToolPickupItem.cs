@@ -43,6 +43,17 @@ namespace SundarbanGuardian.Inventory
 
         private void Awake()
         {
+            // Limit excessive world duplicates to ensure scarce, balanced survival gameplay
+            if (gameObject.name.StartsWith("Seed_Pickup_V2_"))
+            {
+                if (int.TryParse(gameObject.name.Substring("Seed_Pickup_V2_".Length), out int idx) && idx > 3)
+                {
+                    Destroy(gameObject);
+                    return;
+                }
+                amount = Mathf.Max(amount, 2); // Each retained seed pouch contains 2 seeds
+            }
+
             initialBasePos = transform.position;
             Ensure3DVisualAsset();
             EnsureTriggerCollider();
